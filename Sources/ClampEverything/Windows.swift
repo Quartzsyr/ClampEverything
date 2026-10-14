@@ -25,7 +25,9 @@ final class FloatingPanel: NSPanel {
     @Published var nearEdge = false
     @Published var mergeReady = false
     @Published var paperPull = PaperPull.resting
-    private var lastMoveDelta = NSPoint.zero
+    private var dragSampler = DragMotionSampler()
+    private var dragSettleWork: DispatchWorkItem?
+    @Published var dragResting = true
     var hovered = false
     var slot = NSRect.zero
     let panel = FloatingPanel()
@@ -106,7 +108,7 @@ final class FloatingPanel: NSPanel {
     }
     private func cancelReveal() { revealGeneration += 1; revealWork?.cancel(); revealWork = nil }
     func retire() {
-        retired = true; hoverWork?.cancel(); hoverWork = nil; cancelReveal()
+        retired = true; dragSettleWork?.cancel(); hoverWork?.cancel(); hoverWork = nil; cancelReveal()
         revealInFlight = false; paperPull = .resting
         manager = nil; panel.orderOut(nil)
         // Break CardModel → panel → hosting view → CardModel retention.
@@ -129,24 +131,34 @@ final class FloatingPanel: NSPanel {
         if manager?.placement(id)?.side == .left { panel.setFrameOrigin(NSPoint(x: previous.minX, y: previous.maxY - panel.frame.height)) }
         else { panel.setFrameOrigin(NSPoint(x: previous.maxX - panel.frame.width, y: previous.maxY - panel.frame.height)) }
         dragOrigin = panel.frame
-        lastMoveDelta = .zero
-        paperPull = PaperPull(x: 0, y: CGFloat(1 - physical.inertia) * 0.6)
+        dragSettleWork?.cancel(); dragResting = false
+        dragSampler.reset(at: ProcessInfo.processInfo.systemUptime)
+        paperPull = .resting
     }
     func move(_ delta: NSPoint) {
-        let velocity = PaperPull.following(NSPoint(x: delta.x - lastMoveDelta.x, y: delta.y - lastMoveDelta.y))
-        let inertia = CGFloat(physical.inertia)
-        paperPull = PaperPull(x: paperPull.x * inertia + velocity.x * (1 - inertia), y: paperPull.y * inertia + velocity.y * (1 - inertia))
-        lastMoveDelta = delta
+        guard moving, !retired else { return }
+        // Window position follows every event; visual work is bounded to 60 Hz.
         panel.setFrameOrigin(NSPoint(x: dragOrigin.minX + delta.x, y: dragOrigin.minY + delta.y))
+        guard let pull = dragSampler.sample(delta: delta, at: ProcessInfo.processInfo.systemUptime, inertia: physical.inertia) else { return }
+        if dragResting { dragResting = false }
+        if manager?.store.state.preferences.motionIntensity != 0 && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { paperPull = pull }
+        dragSettleWork?.cancel()
+        let settle = DispatchWorkItem { [weak self] in
+            guard let self, self.moving, !self.retired else { return }
+            self.dragResting = true; self.paperPull = .resting
+        }
+        dragSettleWork = settle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09, execute: settle)
         let point = NSEvent.mouseLocation
         manager?.updateGrouping(source: id, at: point)
         manager?.showSnapPreview(at: point)
         if let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }) {
             let preferences = manager?.store.state.preferences ?? AppPreferences()
-            nearEdge = preferences.autoSnap && DockGeometry.side(at: point, in: screen.frame, distance: preferences.snapDistance) != nil
+            let next = preferences.autoSnap && DockGeometry.side(at: point, in: screen.frame, distance: preferences.snapDistance) != nil
+            if nearEdge != next { nearEdge = next }
         }
     }
-    func endMove() { manager?.hideSnapPreview(); paperPull = .resting; moving = false; nearEdge = false; busy = false; manager?.finishMove(self) }
+    func endMove() { manager?.updateGrouping(source: id, at: NSEvent.mouseLocation); dragSettleWork?.cancel(); dragResting = true; manager?.hideSnapPreview(); paperPull = .resting; moving = false; nearEdge = false; busy = false; manager?.finishMove(self) }
     func interaction(_ active: Bool) { busy = active; if !active { hover(hovered) } }
 }
 
@@ -307,14 +319,14 @@ final class FloatingPanel: NSPanel {
         updatePlacement(id) { $0.width = min(900, max(280, original.width + delta.x)); $0.height = min(1000, max(300, original.height - delta.y)) }
         if let card = cards[id] { layout(card) }
     }
-    func finishMove(_ card: CardModel) {
+    func finishMove(_ card: CardModel, at destinationPoint: CGPoint? = nil) {
         let destination = mergeSource == card.id ? mergeCandidate : nil
         let ready = destination.flatMap { cards[$0]?.mergeReady } ?? false
         cancelGrouping()
         if ready, let destination, store.combine(card.id, with: destination) != nil { return }
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else { return }
+        let point = destinationPoint ?? NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }) ?? NSScreen.main else { return }
         let usable = NSRect(x: screen.frame.minX, y: screen.visibleFrame.minY + 12, width: screen.frame.width, height: screen.visibleFrame.height - 24)
-        let point = NSEvent.mouseLocation
         let preferences = store.state.preferences
         let side = preferences.autoSnap ? DockGeometry.side(at: point, in: usable, distance: preferences.snapDistance) : nil
         let left = side == .left, right = side == .right
@@ -328,19 +340,12 @@ final class FloatingPanel: NSPanel {
                 placement.dockHeight = DockGeometry.height(at: point.y, in: usable)
             }
         }
+        sync(); store.save()
         if left || right {
             store.tactile(.alignment)
-            card.sticky = false; card.expanded = false
-
-        }
-        sync(); store.save()
-        if side != nil && preferences.motionIntensity > 0 && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            let destination = card.panel.frame
-            card.panel.setFrameOrigin(NSPoint(x: side == .left ? point.x : point.x - compactWidth, y: point.y - 22))
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.18
-                card.panel.animator().setFrame(destination, display: true)
-            }
+            // Fold around the jaw; a window animator could keep moving the panel
+            // after the user had already picked it up again.
+            card.close()
         }
     }
     func placeCaptured(_ id: UUID, at point: CGPoint) {
@@ -437,9 +442,9 @@ final class FloatingPanel: NSPanel {
         }
         snapPreview.setFrame(NSRect(x: side == .left ? frame.minX : frame.maxX - compactWidth,
             y: DockGeometry.originY(height: DockGeometry.height(at: point.y, in: frame), index: 0, in: frame), width: compactWidth, height: 44), display: true)
-        snapPreview.orderFrontRegardless()
+        if !snapPreview.isVisible { snapPreview.orderFrontRegardless() }
     }
-    func hideSnapPreview() { snapPreview.orderOut(nil) }
+    func hideSnapPreview() { if snapPreview.isVisible { snapPreview.orderOut(nil) } }
     func showSettings(section: String? = nil) {
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 530), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)

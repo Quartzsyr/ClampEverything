@@ -91,9 +91,10 @@ struct MaterialMovement: ViewModifier {
     var pull: PaperPull
     var isLeft: Bool
     var disabled: Bool
+    var tracking = false
     func body(content: Content) -> some View {
         content.modifier(MaterialDragEffect(material: material, pull: disabled ? .resting : pull, isLeft: isLeft))
-            .animation(disabled ? nil : .spring(response: material.springResponse,
+            .animation(disabled || tracking ? nil : .spring(response: material.springResponse,
                                                dampingFraction: material.isPocket ? 0.62 : 0.68), value: pull)
     }
 }

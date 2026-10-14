@@ -134,3 +134,24 @@ enum DockGeometry {
         return frame.minY + CGFloat(max(0, min(1, height))) * max(0, frame.height - 44)
     }
 }
+
+/// Velocity uses elapsed time, so a 120 Hz mouse and a 60 Hz mouse feel alike.
+struct DragMotionSampler {
+    private var lastTime: TimeInterval = 0
+    private var lastDelta = CGPoint.zero
+    private(set) var pull = PaperPull.resting
+    mutating func reset(at time: TimeInterval) {
+        lastTime = time; lastDelta = .zero; pull = .resting
+    }
+    mutating func sample(delta: CGPoint, at time: TimeInterval, inertia: Double) -> PaperPull? {
+        let elapsed = time - lastTime
+        guard elapsed >= 1.0 / 60 else { return nil }
+        let duration = max(1.0 / 240, elapsed)
+        let target = PaperPull(x: max(-1, min(1, (delta.x - lastDelta.x) / duration / 900)),
+                               y: max(-1, min(1, -(delta.y - lastDelta.y) / duration / 900)))
+        let blend = CGFloat(1 - exp(-elapsed / (0.025 + inertia * 0.04)))
+        pull = PaperPull(x: pull.x + (target.x - pull.x) * blend, y: pull.y + (target.y - pull.y) * blend)
+        lastDelta = delta; lastTime = time
+        return pull
+    }
+}

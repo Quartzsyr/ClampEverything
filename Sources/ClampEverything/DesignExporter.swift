@@ -110,8 +110,23 @@ import ClampCore
         try await snapshot(SoftSheetStudy(photo: store.images[image.id] ?? demoImage()), size: NSSize(width: 1000, height: 600), to: output.appendingPathComponent("17-soft-sheet.png"))
         try await snapshot(ClipMotionStudy(), size: NSSize(width: 960, height: 650), to: output.appendingPathComponent("15-clip-motion.png"))
         try await snapshot(MaterialStudy(store: store, manager: manager, ids: store.active.map(\.id), photo: image.id), size: NSSize(width: 960, height: 560), to: output.appendingPathComponent("13-paper-photo.png"))
+        try await snapshot(ZStack {
+            Color(red: 0.12, green: 0.15, blue: 0.19)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("参考资料").font(.system(size: 12)).foregroundStyle(.secondary)
+                HStack(spacing: 14) {
+                    Image(systemName: "doc.text.fill").font(.system(size: 30)).foregroundStyle(.white.opacity(0.8))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("项目研究笔记.pdf").font(.system(size: 16, weight: .medium))
+                        Text("文稿 · 2.4 MB").font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                }.padding(20).frame(width: 300, height: 90)
+                    .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
+                    .overlay { TargetGlowView(animated: false).padding(-14) }
+            }.foregroundStyle(.white).environment(\.colorScheme, .dark)
+        }, size: NSSize(width: 460, height: 230), to: output.appendingPathComponent("32-target-glow.png"))
         let pickupPose = CursorClipPose()
-        pickupPose.gripping = true; pickupPose.material = .folder; pickupPose.pickupMessage = "论文项目"; pickupPose.nearEdge = true
+        pickupPose.gripping = true; pickupPose.hasMaterial = true; pickupPose.material = .folder; pickupPose.pickupMessage = "论文项目"; pickupPose.nearEdge = true
         try await snapshot(VStack(spacing: 12) {
             CursorClipView(pose: pickupPose).frame(width: 64, height: 46)
             PickupHintView(pose: pickupPose).frame(width: 240, height: 62)

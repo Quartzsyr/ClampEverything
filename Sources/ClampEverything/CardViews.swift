@@ -113,7 +113,7 @@ struct CardSurface: View {
         wide && placement.mode == .docked && !model.moving && !motionDisabled ? model.revealProgress : 1
     }
     var paperPull: PaperPull {
-        guard !motionDisabled else { return .resting }
+        guard !motionDisabled, !model.moving else { return .resting }
         let strength = CGFloat(store.state.preferences.motionIntensity) * physical.flexibility
         return PaperPull(x: (model.paperPull.x + hoverPull.x) * strength, y: (model.paperPull.y + hoverPull.y + settling) * strength)
     }
@@ -155,8 +155,8 @@ struct CardSurface: View {
             if wide {
                 VStack(spacing: 0) {
                     if let item, item.kind == .image { PhotoBody(store: store, item: item, interaction: { model.interaction($0) }, pull: paperPull, fold: fold, isLeft: isLeft) }
-                    else if let item { ItemBody(store: store, item: item, manager: manager, interaction: { model.interaction($0) }) }
-                    else { GroupBody(store: store, groupID: model.id, manager: manager, interaction: { model.interaction($0) }) }
+                    else if let item { ItemBody(store: store, item: item, manager: manager, interaction: { model.interaction($0) }).equatable() }
+                    else { GroupBody(store: store, groupID: model.id, manager: manager, interaction: { model.interaction($0) }).equatable() }
                 }
                 .padding(.top, housing == .folder || housing == .collection ? 22 : 0)
                 .background { HousingMaterial(housing: housing, id: model.id, preferences: store.state.preferences, title: title, pull: paperPull, isLeft: isLeft, material: physical, opening: folderProgress, layers: layers, dragPull: dragPull) }
@@ -168,7 +168,7 @@ struct CardSurface: View {
                 .environment(\.colorScheme, .light)
                 .padding(.top, 9).padding(.bottom, 9)
                 .padding(.leading, isLeft ? 15 : 9).padding(.trailing, isLeft ? 9 : 15)
-                .modifier(MaterialMovement(material: physical, pull: dragPull, isLeft: isLeft, disabled: motionDisabled))
+                .modifier(MaterialMovement(material: physical, pull: dragPull, isLeft: isLeft, disabled: motionDisabled, tracking: model.moving && !model.dragResting))
                 .animation(reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.73), value: fold)
                 .overlay(alignment: isLeft ? .bottomTrailing : .bottomLeading) { if housing.isFlexible && !motionDisabled { foldGrip } }
                 .overlay(alignment: isLeft ? .bottomTrailing : .bottomLeading) {
@@ -297,7 +297,8 @@ struct PhotoBody: View {
     }
 }
 
-struct ItemBody: View {
+struct ItemBody: View, Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.item == rhs.item && lhs.store === rhs.store && lhs.manager === rhs.manager }
     @ObservedObject var store: ClipStore
     let item: ClipItem
     let manager: WindowManager
@@ -359,7 +360,8 @@ struct ItemBody: View {
     }
 }
 
-struct GroupBody: View {
+struct GroupBody: View, Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.groupID == rhs.groupID && lhs.store === rhs.store && lhs.manager === rhs.manager }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var store: ClipStore
     let groupID: UUID

@@ -26,6 +26,8 @@ struct CopyProgress {
     var writable = true
     var onReveal: ((UUID) -> Void)?
     var onChange: (() -> Void)?
+    private var changeBatchDepth = 0
+    private var pendingChange = false
     private var saving: Timer?
     private var cleanupTimer: Timer?
     private var messageTimer: Timer?
@@ -47,9 +49,18 @@ struct CopyProgress {
         messageTimer?.invalidate(); message = text
         messageTimer = Timer.scheduledTimer(withTimeInterval: 8, repeats: false) { [weak self] _ in Task { @MainActor in if self?.writable == true { self?.message = nil } } }
     }
+    /// Publish a complete placement instead of briefly showing a new item at its default edge.
+    func batchChanges<Result>(_ action: () throws -> Result) rethrows -> Result {
+        changeBatchDepth += 1
+        defer {
+            changeBatchDepth -= 1
+            if changeBatchDepth == 0 && pendingChange { pendingChange = false; onChange?() }
+        }
+        return try action()
+    }
     func changed(immediate: Bool = false) {
         guard writable else { return }
-        onChange?()
+        if changeBatchDepth > 0 { pendingChange = true } else { onChange?() }
         saving?.invalidate()
         if immediate { save() }
         else { saving = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: false) { [weak self] _ in Task { @MainActor in self?.save() } } }

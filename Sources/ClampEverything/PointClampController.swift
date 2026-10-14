@@ -28,6 +28,12 @@ enum PointClampCursorGeometry {
     private var gesture = HoldGestureState()
     private let cursorPanel = FloatingPanel()
     private let cursorPose = CursorClipPose()
+    private let aim = TargetAimController()
+    private let glowPanel = FloatingPanel()
+    private let glowState = TargetGlowState()
+    private var glowLayout: TargetGlowLayout?
+    private var glowStyle: TargetGlowStyle?
+    private var aimHintVisible = false
     private let cursorVisibility = CursorVisibilityLease()
     private var previousApplication: NSRunningApplication?
     private var acquiringForeground = false
@@ -36,6 +42,9 @@ enum PointClampCursorGeometry {
     private var configurationTimer: Timer?
     private var isCapturing = false
     private var captureGeneration = 0
+    private var carrySampler = DragMotionSampler()
+    private var carryOrigin = CGPoint.zero
+    private var carrySettleWork: DispatchWorkItem?
     private var captureTask: Task<Void, Never>?
     private var consumedMouse = false
     private var consumedEscape = false
@@ -48,6 +57,22 @@ enum PointClampCursorGeometry {
     private var feedbackWork: DispatchWorkItem?
     init(store: ClipStore) {
         self.store = store
+        glowPanel.ignoresMouseEvents = true
+        glowPanel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue - 1)
+        glowPanel.setAccessibilityElement(false)
+        glowPanel.animationBehavior = .none
+        aim.onTarget = { [weak self] target in self?.showAim(target) }
+        aim.onMotion = { [weak self] moving in
+            guard let self, self.glowState.moving != moving else { return }
+            self.glowState.moving = moving
+        }
+        aim.onHint = { [weak self] visible in
+            guard let self else { return }
+            self.aimHintVisible = visible
+            if visible, self.gesture.active, !self.consumedMouse, !self.isCapturing, NSApp.isActive {
+                self.pickupPanel.orderFrontRegardless()
+            } else if !self.consumedMouse && !self.isCapturing { self.pickupPanel.orderOut(nil) }
+        }
         pickupPanel.ignoresMouseEvents = true
         pickupPanel.level = .screenSaver
         pickupPanel.contentView = NSHostingView(rootView: PickupHintView(pose: cursorPose))
@@ -97,7 +122,7 @@ enum PointClampCursorGeometry {
             if CGEvent.tapIsEnabled(tap: tap) { return }
         }
         stop(); configured = shortcut
-        let types: [CGEventType] = [.flagsChanged, .keyDown, .keyUp, .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .mouseMoved, .leftMouseDragged]
+        let types: [CGEventType] = [.flagsChanged, .keyDown, .keyUp, .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .mouseMoved, .leftMouseDragged, .scrollWheel]
         let mask = types.reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
         tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback: { _, type, event, info in
             guard let info else { return Unmanaged.passUnretained(event) }
@@ -129,6 +154,11 @@ enum PointClampCursorGeometry {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return false
         }
+        if type == .scrollWheel {
+            aim.cancel()
+            if gesture.active, !consumedMouse, !isCapturing { moveCursor(at: event.location) }
+            return false
+        }
         if type == .mouseMoved || type == .leftMouseDragged {
             if gesture.active, !isCapturing { moveCursor(at: event.location); presentCursorWithoutPointer() }
             return consumedMouse
@@ -147,8 +177,10 @@ enum PointClampCursorGeometry {
         if type == .rightMouseDown, gesture.active || isCapturing { consumedRight = true; cancelGesture(); return true }
         if type == .leftMouseDown, gesture.active {
             guard !isCapturing else { consumedMouse = true; return true }
-            cursorPose.openness = 0.12
-            cursorPose.gripping = true
+            aim.cancel()
+            cursorPose.openness = 1
+            cursorPose.gripping = true; cursorPose.hasMaterial = false
+            cursorPose.motionEnabled = store.state.preferences.motionIntensity > 0 && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
             let point = event.location
             targetTask?.cancel()
             targetTask = Task { try await PointCapture.prepare(at: point) }
@@ -161,22 +193,7 @@ enum PointClampCursorGeometry {
                 do {
                     let prepared = try await pending.value
                     guard !Task.isCancelled, let self, self.gesture.active, !self.isCapturing else { return }
-                    let target = prepared.target
-                    self.cursorPose.pickupMessage = target.title
-                    switch target.payload {
-                    case .file(let url):
-                        let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .contentTypeKey])
-                        let kind: ClipKind = values?.isDirectory == true ? .folder : (values?.contentType?.conforms(to: .image) == true ? .image : .file)
-                        var item = ClipItem(kind: kind, title: url.lastPathComponent)
-                        item.originalPath = url.path
-                        self.cursorPose.material = PhysicalMaterial.forItem(item)
-                        self.cursorPose.preview = NSWorkspace.shared.icon(forFile: url.path)
-                    case .text(let text): self.cursorPose.material = .note; self.cursorPose.text = String(text.prefix(12))
-                    case .link: self.cursorPose.material = .bookmark; self.cursorPose.preview = NSImage(systemSymbolName: "link", accessibilityDescription: nil)
-                    case .image:
-                        self.cursorPose.material = .photo
-                        self.cursorPose.preview = prepared.image.map { NSImage(cgImage: $0, size: .zero) }
-                    }
+                    self.applyPreparedTarget(prepared)
                 } catch {
                     guard !Task.isCancelled, let self, self.gesture.active, !self.isCapturing else { return }
                     self.cursorPose.failed = true
@@ -201,7 +218,7 @@ enum PointClampCursorGeometry {
     private func updateCursor() {
         guard !isCapturing else { return }
         guard gesture.active, !recording else { hideCursor(); return }
-        cursorPose.openness = consumedMouse ? 0.12 : 1
+        cursorPose.openness = consumedMouse && cursorPose.hasMaterial ? cursorPose.material.jawOpening : 1
         if !NSApp.isActive && !acquiringForeground {
             previousApplication = NSWorkspace.shared.frontmostApplication
             acquiringForeground = true
@@ -230,10 +247,16 @@ enum PointClampCursorGeometry {
             status = "系统未允许隐藏指针，鼠标夹取已取消"; cancelGesture(); return
         }
         cursorPanel.orderFrontRegardless()
-        pickupPanel.orderFrontRegardless()
+        if consumedMouse || aimHintVisible { pickupPanel.orderFrontRegardless() }
+        else { pickupPanel.orderOut(nil) }
     }
     private func moveCursor(at eventPoint: CGPoint? = nil) {
         let point = eventPoint.map { Self.cocoaPoint($0) } ?? NSEvent.mouseLocation
+        if !consumedMouse && !isCapturing {
+            let top = NSScreen.screens.first?.frame.maxY ?? 0
+            aim.update(at: CGPoint(x: point.x, y: top - point.y))
+        }
+        if consumedMouse { updateCarry(at: point) }
         cursorPose.nearEdge = NSScreen.screens.first(where: { $0.frame.contains(point) }).map { self.store.state.preferences.autoSnap && DockGeometry.side(at: point, in: $0.frame, distance: self.store.state.preferences.snapDistance) != nil } ?? false
         // The clip's jaw, rather than its centre, marks the click location.
         cursorPanel.setFrame(PointClampCursorGeometry.frame(at: point), display: true)
@@ -243,10 +266,66 @@ enum PointClampCursorGeometry {
                                     y: max(screen.minY, min(point.y - 82, screen.maxY - size.height)),
                                     width: size.width, height: size.height), display: true)
     }
+    private func applyPreparedTarget(_ prepared: PreparedPointTarget) {
+        let target = prepared.target
+        cursorPose.pickupMessage = target.title
+        switch target.payload {
+        case .file(let url):
+            let kind = prepared.fileKind ?? .file
+            var item = ClipItem(kind: kind, title: url.lastPathComponent); item.originalPath = url.path
+            cursorPose.material = PhysicalMaterial.forItem(item)
+            cursorPose.preview = NSImage(systemSymbolName: kind.symbol, accessibilityDescription: nil)
+        case .text(let text): cursorPose.material = .note; cursorPose.text = String(text.prefix(12))
+        case .link: cursorPose.material = .bookmark; cursorPose.preview = NSImage(systemSymbolName: "link", accessibilityDescription: nil)
+        case .image:
+            cursorPose.material = .photo
+            cursorPose.preview = prepared.image.map { NSImage(cgImage: $0, size: .zero) }
+        }
+        cursorPose.hasMaterial = true
+        cursorPose.openness = cursorPose.material.jawOpening
+        carryOrigin = NSEvent.mouseLocation
+        carrySampler.reset(at: ProcessInfo.processInfo.systemUptime)
+    }
+
+    private func updateCarry(at point: CGPoint) {
+        guard cursorPose.hasMaterial, cursorPose.motionEnabled else { return }
+        let delta = CGPoint(x: point.x - carryOrigin.x, y: point.y - carryOrigin.y)
+        guard let pull = carrySampler.sample(delta: delta, at: ProcessInfo.processInfo.systemUptime, inertia: cursorPose.material.inertia) else { return }
+        cursorPose.carrySettling = false; cursorPose.carryPull = pull
+        carrySettleWork?.cancel()
+        let settle = DispatchWorkItem { [weak self] in
+            guard let self, self.gesture.active, self.cursorPose.hasMaterial else { return }
+            self.cursorPose.carrySettling = true; self.cursorPose.carryPull = .resting
+        }
+        carrySettleWork = settle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09, execute: settle)
+    }
+    private func showAim(_ target: PointTarget?) {
+        guard gesture.active, !consumedMouse, !isCapturing, let target,
+              let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }),
+              let layout = TargetGlowLayout.make(regions: target.regions.isEmpty ? target.bounds.map { [$0] } ?? [] : target.regions,
+                                                 screen: screen.frame, desktopTop: NSScreen.screens.first?.frame.maxY ?? 0) else {
+            if glowPanel.isVisible { glowPanel.orderOut(nil) }
+            glowPanel.contentView = nil; glowLayout = nil; glowStyle = nil
+            if !cursorPose.aimTitle.isEmpty { cursorPose.aimTitle = "" }
+            return
+        }
+        cursorPose.aimTitle = target.title
+        let style = TargetGlowStyle.forTarget(target)
+        if glowPanel.isVisible && glowLayout == layout && glowStyle == style { return }
+        glowLayout = layout; glowStyle = style
+        glowPanel.contentView = NSHostingView(rootView: TargetGlowView(animated: !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion && store.state.preferences.motionIntensity > 0,
+                                                                     style: style, regions: layout.regions, state: glowState))
+        glowPanel.setFrame(layout.frame, display: true)
+        glowPanel.orderFrontRegardless()
+    }
     static func cocoaPoint(_ point: CGPoint) -> CGPoint {
         CGPoint(x: point.x, y: (NSScreen.screens.first?.frame.maxY ?? 0) - point.y)
     }
     private func hideCursor() {
+        aim.cancel()
+        carrySettleWork?.cancel(); carrySettleWork = nil
+        cursorPose.hasMaterial = false; cursorPose.carryPull = .resting
         previewTask?.cancel(); previewTask = nil
         watchdog?.invalidate(); watchdog = nil
         cursorPanel.orderOut(nil); pickupPanel.orderOut(nil)
@@ -271,6 +350,8 @@ enum PointClampCursorGeometry {
         captureGeneration += 1
         let generation = captureGeneration
         isCapturing = true
+        moveCursor(at: destination)
+        let readyAtRelease = cursorPose.hasMaterial
         cursorPose.pickupMessage = "正在放置…"
         cursorPose.openness = 0
         captureTask = Task { @MainActor [weak self] in
@@ -284,10 +365,11 @@ enum PointClampCursorGeometry {
             }
             do {
                 try Task.checkCancellation()
-                if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { try await Task.sleep(nanoseconds: 140_000_000) }
-                self.hideCursor()
-                self.cursorPose.processing = true
-                self.pickupPanel.orderFrontRegardless()
+                if !readyAtRelease {
+                    self.hideCursor()
+                    self.cursorPose.processing = true
+                    self.pickupPanel.orderFrontRegardless()
+                }
                 let prepared: PreparedPointTarget
                 if let pendingTarget {
                     prepared = try await withTaskCancellationHandler {
@@ -295,20 +377,29 @@ enum PointClampCursorGeometry {
                     } onCancel: { pendingTarget.cancel() }
                 } else { throw PointCaptureError.unavailable }
                 try Task.checkCancellation()
+                self.applyPreparedTarget(prepared)
+                self.cursorPose.carrySettling = true; self.cursorPose.carryPull = .resting
+                self.cursorPose.processing = true
+                if readyAtRelease && self.cursorPose.motionEnabled { try await Task.sleep(nanoseconds: 90_000_000) }
+                try Task.checkCancellation()
+                self.hideCursor()
                 let target = prepared.target
                 let previous = Set(self.store.active.map(\.id))
-                switch target.payload {
-                case .file(let url): self.store.importFiles([url])
-                case .text(let text): self.store.addTextOrLink(text)
-                case .link(let url): self.store.addTextOrLink(url.absoluteString)
-                case .image:
-                    guard let cgImage = prepared.image else { throw PointCaptureError.unavailable }
-                    self.store.addCapturedImage(cgImage, title: target.title)
+                let added = try self.store.batchChanges {
+                    switch target.payload {
+                    case .file(let url): self.store.importFiles([url])
+                    case .text(let text): self.store.addTextOrLink(text)
+                    case .link(let url): self.store.addTextOrLink(url.absoluteString)
+                    case .image:
+                        guard let cgImage = prepared.image else { throw PointCaptureError.unavailable }
+                        self.store.addCapturedImage(cgImage, title: target.title)
+                    }
+                    self.store.hidden = false
+                    let newItem = self.store.active.first { !previous.contains($0.id) }
+                    let added = newItem != nil
+                    if let newItem { self.store.tactile(); self.onPlace?(newItem.id, Self.cocoaPoint(destination)) }
+                    return added
                 }
-                self.store.hidden = false; self.store.onChange?()
-                let newItem = self.store.active.first { !previous.contains($0.id) }
-                let added = newItem != nil
-                if let newItem { self.store.tactile(); self.onPlace?(newItem.id, Self.cocoaPoint(destination)) }
                 self.showFeedback(added ? "已夹住" : (self.store.message ?? "已处理"), at: destination)
             } catch is CancellationError {
                 return
@@ -355,16 +446,22 @@ enum PointClampCursorGeometry {
     @Published var pickupMessage = ""
     @Published var failed = false
     @Published var processing = false
+    @Published var aimTitle = ""
+    @Published var hasMaterial = false
+    @Published var motionEnabled = true
+    @Published var carryPull = PaperPull.resting
+    @Published var carrySettling = true
+    var effectiveOpenness: Double { gripping && hasMaterial && !failed ? max(openness, material.jawOpening) : 1 }
 }
 
 struct CursorClipView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var pose: CursorClipPose
     var body: some View {
-        ImageGenCursorClip(openness: pose.gripping && !pose.failed ? max(pose.openness, pose.material.jawOpening) : pose.openness)
-            .animation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.8), value: pose.openness)
+        ImageGenCursorClip(openness: pose.effectiveOpenness)
+            .animation(reduceMotion || !pose.motionEnabled ? nil : .spring(response: 0.22, dampingFraction: 0.8), value: pose.openness)
             .background(alignment: .leading) {
-                if pose.gripping && !pose.failed {
+                if pose.gripping && pose.hasMaterial && !pose.failed {
                     Group {
                         if pose.material.isPocket { FolderMaterial(tint: .kraft, opening: 0.6, layers: 2) }
                         else if pose.material == .bookmark { BookmarkMaterial() }
@@ -376,7 +473,8 @@ struct CursorClipView: View {
                             if let preview = pose.preview { Image(nsImage: preview).resizable().scaledToFit().padding(3) }
                             else { Text(pose.text).font(.system(size: 5)).foregroundStyle(.black).lineLimit(3).padding(2) }
                         }
-                        .rotationEffect(.degrees(pose.nearEdge ? 0 : -9))
+                        .rotationEffect(.degrees(pose.nearEdge ? 0 : (-6 + Double(pose.carryPull.x) * 7 + Double(pose.carryPull.y) * 2)), anchor: .topLeading)
+                        .animation(reduceMotion || !pose.motionEnabled || !pose.carrySettling ? nil : .spring(response: pose.material.springResponse, dampingFraction: 0.7), value: pose.carryPull)
                         .shadow(radius: 2, y: 2)
                 }
             }
@@ -388,7 +486,7 @@ struct PickupHintView: View {
     @ObservedObject var pose: CursorClipPose
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(pose.processing ? "正在放置…" : (pose.gripping ? pose.pickupMessage : "点击夹住内容，拖动后松手放置"))
+            Text(pose.processing ? "正在放置…" : (pose.gripping ? pose.pickupMessage : (pose.aimTitle.isEmpty ? "点击夹住内容，拖动后松手放置" : "夹取 · " + pose.aimTitle)))
                 .font(.system(size: 11, weight: .medium)).lineLimit(2)
             Text(pose.processing ? "正在读取目标 · Esc / 右键取消" : (pose.failed ? "Esc / 右键取消，松开按键重试" : (pose.gripping ? (pose.nearEdge ? "松手吸附到屏幕边缘 · Esc 取消" : "松手放在这里 · Esc / 右键取消") : "松开夹取按键退出 · Esc / 右键取消")))
                 .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)

@@ -1,17 +1,23 @@
 import AppKit
 import ApplicationServices
 import ScreenCaptureKit
+import UniformTypeIdentifiers
+import ClampCore
 
 struct PointTarget: Sendable {
     enum Payload: Sendable { case file(URL), text(String), link(URL), image(CGRect) }
     let payload: Payload
     let title: String
+    var bounds: CGRect? = nil
+    var regions: [CGRect] = []
+    var fileKind: ClipKind? = nil
 }
 
 /// An image is frozen during pickup, never re-read at the drop destination.
 struct PreparedPointTarget {
     let target: PointTarget
     let image: CGImage?
+    var fileKind: ClipKind? = nil
 }
 
 struct PointCandidate {
@@ -22,6 +28,9 @@ struct PointCandidate {
     var text: String?
     var title: String?
     var rect: CGRect?
+    var selectionRect: CGRect?
+    var textRegions: [CGRect] = []
+    var fileKind: ClipKind? = nil
 }
 
 enum PointCaptureError: LocalizedError {
@@ -58,6 +67,54 @@ enum PointCapture {
         guard AXValueGetValue(p as! AXValue, .cgPoint, &point), AXValueGetValue(s as! AXValue, .cgSize, &size), size.width > 1, size.height > 1 else { return nil }
         return CGRect(origin: point, size: size)
     }
+    static func selectionBounds(_ element: AXUIElement) -> CGRect? {
+        guard let range = attribute(element, kAXSelectedTextRangeAttribute) else { return nil }
+        var value: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, kAXBoundsForRangeParameterizedAttribute as CFString, range, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var rect = CGRect.zero
+        guard AXValueGetValue(value as! AXValue, .cgRect, &rect), rect.width > 1, rect.height > 1 else { return nil }
+        return rect
+    }
+    static func parameter(_ element: AXUIElement, _ name: String, _ parameter: CFTypeRef) -> CFTypeRef? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, name as CFString, parameter, &value) == .success else { return nil }
+        return value
+    }
+    /// Use native visual line ranges, including soft wrapping. Bound work on long documents.
+    static func textRegions(_ element: AXUIElement, selected: Bool, text: String?) throws -> [CGRect] {
+        var range = CFRange(location: 0, length: text?.utf16.count ?? 0)
+        if selected {
+            guard let value = attribute(element, kAXSelectedTextRangeAttribute), CFGetTypeID(value) == AXValueGetTypeID(),
+                  AXValueGetValue(value as! AXValue, .cfRange, &range) else { return [] }
+        }
+        guard range.location >= 0, range.length > 0, range.location < Int.max - range.length,
+              let first = parameter(element, kAXLineForIndexParameterizedAttribute, NSNumber(value: range.location)) as? NSNumber,
+              let last = parameter(element, kAXLineForIndexParameterizedAttribute, NSNumber(value: range.location + range.length - 1)) as? NSNumber,
+              first.intValue >= 0, last.intValue >= first.intValue,
+              last.intValue - first.intValue < 24 else { return [] }
+        let deadline = Date().addingTimeInterval(0.16)
+        var result: [CGRect] = []
+        for line in first.intValue...last.intValue {
+            try Task.checkCancellation()
+            guard Date() < deadline,
+                  let lineValue = parameter(element, kAXRangeForLineParameterizedAttribute, NSNumber(value: line)),
+                  CFGetTypeID(lineValue) == AXValueGetTypeID() else { return [] }
+            var lineRange = CFRange()
+            guard AXValueGetValue(lineValue as! AXValue, .cfRange, &lineRange),
+                  lineRange.location >= 0, lineRange.length >= 0, lineRange.location < Int.max - lineRange.length else { return [] }
+            let start = max(range.location, lineRange.location), end = min(range.location + range.length, lineRange.location + lineRange.length)
+            if end <= start { continue }
+            var intersection = CFRange(location: start, length: end - start)
+            guard let axRange = AXValueCreate(.cfRange, &intersection),
+                  let rectValue = parameter(element, kAXBoundsForRangeParameterizedAttribute, axRange),
+                  CFGetTypeID(rectValue) == AXValueGetTypeID() else { return [] }
+            var rect = CGRect.zero
+            guard AXValueGetValue(rectValue as! AXValue, .cgRect, &rect), rect.width > 1, rect.height > 1 else { return [] }
+            result.append(rect)
+        }
+        return result
+    }
     static func target(at point: CGPoint) throws -> PointTarget {
         guard AXIsProcessTrusted() else { throw PointCaptureError.permission }
         let system = AXUIElementCreateSystemWide()
@@ -81,12 +138,20 @@ enum PointCapture {
             try Task.checkCancellation()
             let role = string(element, kAXRoleAttribute) ?? ""
             let boundary = [kAXWindowRole, kAXApplicationRole, "AXWebArea"].contains(role)
-            return PointCandidate(role: role,
-                url: boundary ? nil : url(element),
-                selectedText: string(element, kAXSelectedTextAttribute),
-                text: boundary ? nil : (string(element, kAXValueAttribute) ?? string(element, kAXTitleAttribute)),
+            let selected = string(element, kAXSelectedTextAttribute)
+            let hasSelection = selected?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            let text = boundary ? nil : (string(element, kAXValueAttribute) ?? string(element, kAXTitleAttribute))
+            let isText = [kAXStaticTextRole, kAXTextFieldRole, kAXTextAreaRole].contains(role)
+            let targetURL = boundary ? nil : url(element)
+            var kind: ClipKind?
+            if let targetURL, targetURL.isFileURL {
+                let values = try? targetURL.resourceValues(forKeys: [.isDirectoryKey, .contentTypeKey])
+                kind = values?.isDirectory == true || targetURL.hasDirectoryPath ? .folder : (values?.contentType?.conforms(to: .image) == true ? .image : .file)
+            }
+            return PointCandidate(role: role, url: targetURL, selectedText: selected, text: text,
                 title: boundary ? nil : (string(element, kAXTitleAttribute) ?? string(element, kAXDescriptionAttribute)),
-                rect: boundary ? nil : bounds(element))
+                rect: boundary ? nil : bounds(element), selectionRect: hasSelection ? selectionBounds(element) : nil,
+                textRegions: hasSelection || isText ? try textRegions(element, selected: hasSelection, text: text) : [], fileKind: kind)
         }
         return try resolve(candidates)
     }
@@ -95,29 +160,29 @@ enum PointCapture {
         guard !candidates.contains(where: \.secure) else { throw PointCaptureError.secure }
         // A file keeps its identity; an explicit text selection beats a parent link.
         for candidate in candidates {
-            if let url = candidate.url, url.isFileURL { return PointTarget(payload: .file(url), title: url.lastPathComponent) }
+            if let url = candidate.url, url.isFileURL { return PointTarget(payload: .file(url), title: url.lastPathComponent, bounds: candidate.rect, fileKind: candidate.fileKind) }
         }
         for candidate in candidates {
             if let text = candidate.selectedText, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return PointTarget(payload: .text(text), title: "选中的文字")
+                return PointTarget(payload: .text(text), title: "选中的文字", bounds: candidate.selectionRect ?? candidate.rect, regions: candidate.textRegions)
             }
         }
         for candidate in candidates {
             if let url = candidate.url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
-                return PointTarget(payload: .link(url), title: candidate.title ?? url.host ?? "链接")
+                return PointTarget(payload: .link(url), title: candidate.title ?? url.host ?? "链接", bounds: candidate.rect)
             }
         }
         for candidate in candidates.prefix(3) {
             if [kAXStaticTextRole, kAXTextFieldRole, kAXTextAreaRole].contains(candidate.role),
                let text = candidate.text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return PointTarget(payload: .text(text), title: "夹取的文字")
+                return PointTarget(payload: .text(text), title: "夹取的文字", bounds: candidate.rect, regions: candidate.textRegions)
             }
         }
         for candidate in candidates {
             if [kAXImageRole, "AXButton", "AXDockItem", "AXMenuItem", "AXCell"].contains(candidate.role),
                let rect = candidate.rect, rect.width.isFinite, rect.height.isFinite,
                rect.origin.x.isFinite, rect.origin.y.isFinite, rect.width > 1, rect.height > 1 {
-                return PointTarget(payload: .image(rect), title: candidate.title ?? "夹取的图片")
+                return PointTarget(payload: .image(rect), title: candidate.title ?? "夹取的图片", bounds: rect)
             }
         }
         throw PointCaptureError.unavailable
@@ -135,7 +200,16 @@ enum PointCapture {
             if case .image(let rect) = target.payload { captured = try await snapshot(rect, point) }
             else { captured = nil }
             try Task.checkCancellation()
-            return PreparedPointTarget(target: target, image: captured)
+            var kind = target.fileKind
+            if case .file(let url) = target.payload, kind == nil {
+                let metadata = Task.detached(priority: .utility) { () throws -> ClipKind in
+                    let values = try url.resourceValues(forKeys: [.isDirectoryKey, .contentTypeKey])
+                    return values.isDirectory == true ? .folder : (values.contentType?.conforms(to: .image) == true ? .image : .file)
+                }
+                kind = try await withTaskCancellationHandler { try await metadata.value } onCancel: { metadata.cancel() }
+            }
+            try Task.checkCancellation()
+            return PreparedPointTarget(target: target, image: captured, fileKind: kind)
         } onCancel: { reader.cancel() }
     }
     @MainActor static func image(in rect: CGRect, at point: CGPoint) async throws -> CGImage {

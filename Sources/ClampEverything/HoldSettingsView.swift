@@ -28,11 +28,13 @@ struct HoldSettingsView: View {
                 }.controlSize(.small)
                 Text(error ?? "支持单键、仅修饰键或组合键。录制后松开；Esc 取消。单字母键启用后会占用该键，建议使用 Option。").font(.system(size: 10)).foregroundStyle(error == nil ? Color.secondary : .orange).lineSpacing(3)
                 VStack(alignment: .leading, spacing: 7) {
-                    Label("按住按键：夹子张开，鼠标旁显示操作提示", systemImage: "1.circle")
+                    Label("按住按键：夹子张开，停留后目标边缘泛起柔光", systemImage: "1.circle")
                     Label("按下鼠标：读取内容，显示名称或图片预览", systemImage: "2.circle")
                     Label("保持按键拖动：边缘提示吸附，桌面提示放置", systemImage: "3.circle")
                     Label("松开鼠标：放下夹项；Esc / 右键随时取消", systemImage: "4.circle")
                 }.font(.system(size: 10)).foregroundStyle(.secondary)
+                Text("文字暖白逐行勾亮，图片冷蓝贴边，链接薄荷底光，文件夹琥珀边光，文件淡紫角光。移动时降低光效并收起提示，停稳后亮起；移出对象清除。文字逐行边界不可用时退回选区或对象外框。瞄准不截图。")
+                    .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Divider()
                 Label(controller.status, systemImage: controller.running ? "checkmark.circle" : "hand.point.up.left").font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
                 HStack {

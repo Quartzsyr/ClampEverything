@@ -28,10 +28,16 @@ final class HandleView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func resetCursorRects() { addCursorRect(bounds, cursor: .openHand) }
-    override func mouseDown(with event: NSEvent) { start = NSEvent.mouseLocation; dragged = false }
+    private func screenPoint(_ event: NSEvent) -> NSPoint {
+        if let cg = event.cgEvent {
+            return NSPoint(x: cg.location.x, y: (NSScreen.screens.first?.frame.maxY ?? 0) - cg.location.y)
+        }
+        return window?.convertPoint(toScreen: event.locationInWindow) ?? NSEvent.mouseLocation
+    }
+    override func mouseDown(with event: NSEvent) { start = screenPoint(event); dragged = false }
     override func mouseDragged(with event: NSEvent) {
         guard let start else { return }
-        let point = NSEvent.mouseLocation
+        let point = screenPoint(event)
         if !dragged && hypot(point.x - start.x, point.y - start.y) > 4 { dragged = true; begin(); NSCursor.closedHand.push() }
         if dragged { move(NSPoint(x: point.x - start.x, y: point.y - start.y)) }
     }
