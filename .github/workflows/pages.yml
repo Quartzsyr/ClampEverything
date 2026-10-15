@@ -1,0 +1,51 @@
+name: Publish desktop website
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript
+        working-directory: site
+        run: npm run check
+      - name: Test motion and static assets
+        working-directory: site
+        run: npm test
+      - uses: actions/configure-pages@v5
+      - name: Package public files only
+        run: |
+          mkdir -p _site
+          cp site/index.html site/style.css site/main.js site/motion.js site/hold-gesture.js site/.nojekyll site/robots.txt site/sitemap.xml _site/
+          cp -R site/assets _site/assets
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
