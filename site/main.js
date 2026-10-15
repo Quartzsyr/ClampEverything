@@ -155,11 +155,13 @@ function bindObject(obj) {
   const el = obj.el, grip = $('.clip-grip', el), body = $('.object-body', el);
   body.draggable = true;
   body.addEventListener('dragstart', event => {
-    if (gesture.active || state.pickup || el.classList.contains('collapsed') || event.target.closest('button')) { event.preventDefault(); return; }
+    if (gesture.active || state.pickup || el.classList.contains('collapsed') || (event.target.closest('button') && !event.target.closest('[data-copy-kind]'))) { event.preventDefault(); return; }
     cancelTour(false); clearAim();
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('application/x-clamp-demo', obj.id);
-    event.dataTransfer.setData('text/plain', obj.kind === 'web' ? 'https://github.com/Quartzsyr/ClampEverything' : body.innerText.trim());
+    const row=event.target.closest('[data-copy-kind]');
+    if(row) event.dataTransfer.setData('application/x-clamp-entry',JSON.stringify({kind:row.dataset.copyKind,title:row.dataset.copyName}));
+    event.dataTransfer.setData('text/plain', row ? row.dataset.copyName : ['note','code'].includes(obj.kind) ? body.innerText.trim() : TYPES[obj.kind].title);
     if (obj.kind === 'photo') event.dataTransfer.setData('text/uri-list', asset('landscape.svg'));
     document.body.classList.add('exporting');
     toast('拖到右上角的「周末旅行」，试试复制交接 · 原夹项会保留', 3700);
@@ -180,6 +182,7 @@ function bindObject(obj) {
   });
   body.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target === body) { event.preventDefault(); copyObject(obj); } });
   el.addEventListener('pointerenter', () => {
+    clearTimeout(hoverTimer);
     if (!state.drag && obj.edge && el.classList.contains('collapsed') && !(gesture.active)) {
       clearTimeout(hoverTimer); hoverTimer = setTimeout(() => toggleObject(obj, true, true), 350);
     }
@@ -187,15 +190,19 @@ function bindObject(obj) {
   el.addEventListener('pointerleave', () => { clearTimeout(hoverTimer); if(obj.edge && !obj.sticky && !state.drag) hoverTimer=setTimeout(()=>toggleObject(obj,false),450); });
   body.addEventListener('pointerdown', event => {
     if (event.target.closest('button,a')) return;
-    if (gesture.active) beginPickup(obj.kind, body, event);
+    if (gesture.active) { obj.suppressClickUntil=performance.now()+1000; beginPickup(obj.kind, body, event); }
   });
   body.addEventListener('wheel', event => {
     if (!['document', 'word'].includes(obj.kind) || state.drag || state.pickup) return;
     event.preventDefault();
-    const now = performance.now(); if (now - (obj.lastWheel || 0) < 650) return;
-    obj.wheel = (obj.wheel || 0) + event.deltaY + event.deltaX;
-    if (Math.abs(obj.wheel) < 20) return;
-    const step = Math.sign(obj.wheel); obj.wheel = 0; obj.lastWheel = now; turnPage(obj, step);
+    const now=performance.now();
+    if(now-(obj.lastWheelEvent || -Infinity)>300){obj.wheelConsumed=false;obj.wheel=0;}
+    obj.lastWheelEvent=now;
+    if(obj.wheelConsumed || now-(obj.lastWheel || -Infinity)<500) return;
+    const delta=Math.abs(event.deltaY)>=Math.abs(event.deltaX)?event.deltaY:event.deltaX;
+    obj.wheel=(obj.wheel || 0)+delta;
+    if(Math.abs(obj.wheel)<(event.deltaMode===0?24:1)) return;
+    const step=Math.sign(obj.wheel);obj.wheel=0;obj.wheelConsumed=true;obj.lastWheel=now;turnPage(obj,step);
   }, { passive: false });
   el.addEventListener('click', event => {
     const preview=event.target.closest('[data-group-preview]'); if(preview){obj.selected=preview.dataset.groupPreview;refreshBody(obj);}
@@ -204,7 +211,6 @@ function bindObject(obj) {
     const folder = event.target.closest('[data-folder]'); if (folder) { obj.folder = folder.dataset.folder; refreshBody(obj); }
     if (event.target.closest('[data-folder-back]')) { obj.folder = null; refreshBody(obj); }
     const entry = event.target.closest('[data-copy-kind]'); if (entry) copyObject({kind: entry.dataset.copyKind, title: entry.dataset.copyName, el: obj.el});
-    const play = event.target.closest('[data-play]'); if (play) playMedia(obj);
   });
 }
 function bindCopyDestination(element, folder) {
@@ -220,7 +226,9 @@ function bindCopyDestination(element, folder) {
     if (!target || getComputedStyle(target.el).display === 'none') target = createObject('folder', { x: innerWidth / 2 - 110, y: 110, width: 220 });
     if (!target) return;
     target.entries ||= ROOT_FILES.map(row => [...row]);
-    target.entries.unshift([`${TYPES[original.kind].title}（副本）`, false, original.kind]); target.folder = null;
+    let payload={kind:original.kind,title:TYPES[original.kind].title};
+    try { const entry=JSON.parse(event.dataTransfer.getData('application/x-clamp-entry')); if(entry && TYPES[entry.kind] && typeof entry.title==='string') payload=entry; } catch {}
+    target.entries.unshift([payload.title, payload.kind==='folder', payload.kind]); target.folder = null;
     refreshBody(target); toggleObject(target, true); target.el.style.zIndex = ++state.z;
     toast('✓ 已复制到示例文件袋 · 原夹项继续留在桌面上');
   });
