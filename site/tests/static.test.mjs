@@ -13,7 +13,7 @@ test('all twelve types use existing native renderings and real source files',asy
  for(const kind of ['document','word'])assert.equal(manifest.items.find(i=>i.kind===kind).pages.length,3);
 });
 test('project Pages paths and published assets are self contained',async()=>{
- const html=await readFile(new URL('index.html',root),'utf8');assert.match(html,/<h1>/);assert.match(html,/releases\/latest/);assert.match(html,/aria-live="polite"/);
+ const html=await readFile(new URL('index.html',root),'utf8');assert.match(html,/<h1(?:\s[^>]*)?>/);assert.match(html,/releases\/latest/);assert.match(html,/aria-live="polite"/);
  for(const match of html.matchAll(/(?:src|href)="(\.\/[^"#]+)"/g))assert.ok((await stat(new URL(match[1],root))).isFile());
  assert.doesNotMatch(html,/(?:src|href)="\/(?!\/)/);assert.doesNotMatch(html,/<script[^>]+src="https?:/);
  async function bytes(url){let n=0;for(const entry of await readdir(url,{withFileTypes:true})){const child=new URL(encodeURIComponent(entry.name)+(entry.isDirectory()?'/':''),url);n+=entry.isDirectory()?await bytes(child):(await stat(child)).size;}return n;}

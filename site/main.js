@@ -1,3 +1,4 @@
+import { createDesktop } from './desktop.js';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
 import { HoldGesture } from './hold-gesture.js';
 
@@ -10,16 +11,19 @@ const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
 const labels = {photo:'照片',note:'便笺',document:'PDF',word:'Word',folder:'文件夹',web:'网页',code:'代码',audio:'音频',video:'视频',archive:'压缩包',file:'其他文件',group:'收纳夹'};
-let manifest, selected, sequence=0, run=0, z=5, dragging=null, manual=null;
+let manifest, environment, sequence=0, run=0, z=5, dragging=null, manual=null;
 let motion = !reduced.matches;
-let suppressSourceClick = 0;
+let statusTimer;
 let hasPointer = false;
 const cursor = $('#demo-cursor');
 const point = {x:0,y:0};
 const animated = () => motion && !reduced.matches;
 const escapeHTML = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pause = ms => new Promise(resolve=>setTimeout(resolve, animated()?ms:Math.min(ms,100)));
-const status = (title,detail='') => {$('#demo-status').innerHTML=`<b>${escapeHTML(title)}</b>${detail?`<small>${escapeHTML(detail)}</small>`:''}`;};
+const status = (title,detail='') => {
+  clearTimeout(statusTimer);const element=$('#demo-status');element.innerHTML=`<b>${escapeHTML(title)}</b>${detail?`<small>${escapeHTML(detail)}</small>`:''}`;element.classList.add('visible');
+  statusTimer=setTimeout(()=>element.classList.remove('visible'),3600);
+};
 const pad = () => manifest.padding ?? 32;
 const sourceURL = item => nativeURL(item.source);
 const sprite = (item, side, compact=false, page=0) => nativeURL(compact ? side==='left'?item.compactLeft:item.compactRight : item.pages?.[page]?.[side] || item[side]);
@@ -45,10 +49,10 @@ function render(obj) {
   const pages=$('.page-controls',obj.el);
   if(pages){Object.assign(pages.style,{left:`${-hookX(obj)+10}px`,top:`${obj.item.height-6}px`});$('span',pages).textContent=`${obj.page+1} / ${obj.item.pages.length}`;$('[data-page="-1"]',pages).disabled=obj.page===0;$('[data-page="1"]',pages).disabled=obj.page===obj.item.pages.length-1;}
 }
-function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=false}={}) {
+function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=false,page=0}={}) {
   const id=++sequence;const el=document.createElement('article');el.className=`native-object ${initial?'initial-object':''}`;el.setAttribute('aria-label',item.title);el.dataset.fileKind=item.kind;
   el.innerHTML=`<span class="nail" aria-hidden="true"></span><div class="assembly"><button class="native-state expanded-state" aria-label="${escapeHTML(item.title)}，原生预览"><img alt="${escapeHTML(item.title)}的桌面端实际夹取样式" draggable="false"></button><button class="native-state compact-state" aria-label="展开${escapeHTML(item.title)}"><img alt="桌面端真实收起状态" draggable="false"></button><button class="move-grip" aria-label="拖动夹子移动，点击收放" title="拖动夹子移动 · 点击收放"></button></div><span class="object-name"></span>${item.pages?.length>1?'<div class="page-controls"><button data-page="-1" aria-label="上一页">‹</button><span></span><button data-page="1" aria-label="下一页">›</button></div>':''}`;
-  const obj={id,item,x,y,side,compact,docked,page:0,sticky:!compact,el,expandedButton:$('.expanded-state',el),compactButton:$('.compact-state',el),busy:false};
+  const obj={id,item,x,y,side,compact,docked,page,sticky:!compact,el,expandedButton:$('.expanded-state',el),compactButton:$('.compact-state',el),busy:false};
   objects.set(id,obj);$('#objects').append(el);render(obj);
   const grip=$('.move-grip',el);
   grip.addEventListener('pointerdown',e=>{
@@ -56,7 +60,8 @@ function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=fals
     dragging={obj,id:e.pointerId,start:{x:e.clientX,y:e.clientY},x:obj.x,y:obj.y,moved:false,lastX:e.clientX,lastY:e.clientY,wasCompact:obj.compact};grip.setPointerCapture(e.pointerId);el.style.zIndex=++z;
   });
   obj.compactButton.addEventListener('click',()=>setExpanded(obj,true));
-  obj.expandedButton.addEventListener('click',()=>{if(!obj.busy)status(obj.item.title,'这是该原文件在桌面端的实际预览；点击「查看原文件」可打开源文件。');});
+  obj.expandedButton.addEventListener('click',()=>{if(!obj.busy)copyItem(obj.item);});
+  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('application/x-clamp-file',JSON.stringify({kind:obj.item.kind}));event.dataTransfer.setData('text/uri-list',nativeURL(obj.item.file));event.dataTransfer.setData('text/plain',obj.item.title);});
   for(const surface of [obj.compactButton,obj.expandedButton,grip]){
     surface.addEventListener('pointerenter',()=>{clearTimeout(obj.leaveTimer);if(obj.compact&&!dragging&&!manual){clearTimeout(obj.hoverTimer);obj.hoverTimer=setTimeout(()=>setExpanded(obj,true,true),350);}});
     surface.addEventListener('pointerleave',()=>{clearTimeout(obj.hoverTimer);if(!obj.sticky&&!dragging){obj.leaveTimer=setTimeout(()=>setExpanded(obj,false),450);}});
@@ -83,38 +88,72 @@ async function turnPage(obj,step) {
   if(animated())await old.animate([{transform:'perspective(850px) rotateY(0deg)',opacity:1},{transform:`perspective(850px) rotateY(${step>0?-105:105}deg)`,opacity:0}],{duration:480,easing:'cubic-bezier(.25,.6,.3,1)',fill:'forwards'}).finished;
   old.remove();obj.busy=false;render(obj);status(obj.item.title,`原文件第 ${obj.page+1} 页`);
 }
-function moveDrag(e){const d=dragging;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.start.x,dy=e.clientY-d.start.y;if(Math.hypot(dx,dy)>4)d.moved=true;if(!d.moved)return;d.obj.x=clamp(d.x+dx,20,innerWidth-20);d.obj.y=clamp(d.y+dy,26,innerHeight-180);d.obj.el.classList.add('moving');d.obj.el.style.setProperty('--angle',`${clamp((e.clientX-d.lastX)*.3,-7,7)}deg`);d.lastX=e.clientX;d.lastY=e.clientY;render(d.obj);}
-function endDrag(){const d=dragging;if(!d)return;dragging=null;d.obj.el.classList.remove('moving');d.obj.el.style.setProperty('--angle','0deg');if(!d.moved){setExpanded(d.obj,d.wasCompact);return;}const side=d.lastX<42?'left':d.lastX>innerWidth-42?'right':null;d.obj.docked=!!side;if(side){d.obj.side=side;d.obj.x=side==='left'?44:innerWidth-44;render(d.obj);setExpanded(d.obj,false);}else render(d.obj);}
-function choose(item,play=false){selected=item;$('#source-image').src=sourceURL(item);$('#source-name').textContent=item.title;$('#source-download').href=nativeURL(item.file);$('#source-download').download=item.title;$$('[data-kind]').forEach(b=>b.classList.toggle('active',b.dataset.kind===item.kind));status('随手夹住，留在手边',item.title+' · 按住拖动，松手放置');}
+function moveDrag(e){const d=dragging;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.start.x,dy=e.clientY-d.start.y;if(Math.hypot(dx,dy)>4)d.moved=true;if(!d.moved)return;d.obj.x=d.x+dx;d.obj.y=d.y+dy;d.obj.el.classList.add('moving');d.obj.el.style.setProperty('--angle',`${clamp((e.clientX-d.lastX)*.3,-7,7)}deg`);d.lastX=e.clientX;d.lastY=e.clientY;render(d.obj);}
+function endDrag(){
+  const d=dragging;if(!d)return;dragging=null;d.obj.el.classList.remove('moving');d.obj.el.style.setProperty('--angle','0deg');
+  if(!d.moved){setExpanded(d.obj,d.wasCompact);return;}
+  if(environment.isTrashPoint(d.lastX,d.lastY)){environment.discard({item:d.obj.item,x:d.obj.x,y:d.obj.y,side:d.obj.side,compact:d.obj.compact,docked:d.obj.docked,page:d.obj.page});d.obj.el.remove();objects.delete(d.obj.id);status('已移到废纸篓',d.obj.item.title);return;}
+  const side=d.lastX<42?'left':d.lastX>innerWidth-42?'right':null;d.obj.docked=!!side;
+  if(side){d.obj.side=side;d.obj.x=side==='left'?44:innerWidth-44;render(d.obj);setExpanded(d.obj,false);}else render(d.obj);
+}
 function cursorAt(x,y,pose='open'){if(!hasPointer&&!manual){cursor.hidden=true;return;}cursor.hidden=false;cursor.style.transform=`translate(${x-8}px,${y-26}px)`;$('.metal',cursor).src=nativeURL(manifest.cursor?.[pose]||`cursor-${pose}.png`);}
-function stopDemo(announce=true){document.body.classList.add('capture-on');run++;gesture.cancel();if(manual){manual=null;gesture.unhold();}cursor.hidden=dialog.open;cursor.classList.remove('holding');if(!dialog.open)cursorAt(point.x,point.y);$('#source-file').classList.remove('aiming');$('#flight-layer').replaceChildren();if(announce)status('已取消夹取','按住文件拖动，松手放置');}
-async function grasp(item,from,to,token){const source=$('#source-image').getBoundingClientRect();const image=new Image();image.src=sourceURL(item);image.className='flight-item';$('#flight-layer').append(image);const start=performance.now();return new Promise(resolve=>{function frame(now){if(!alive(token)){image.remove();resolve(false);return;}const p=clamp((now-start)/(animated()?600:1));const jaw=manual?.token===token?(manual.released?manual.destination:point):to;const sample=pickupSample(p,source,jaw,item.kind);Object.assign(image.style,{left:`${sample.x}px`,top:`${sample.y}px`,width:`${sample.width}px`,height:`${sample.height}px`,transform:`rotate(${sample.angle}deg) scaleY(${1-sample.compression})`});cursorAt(jaw.x,jaw.y,p<.48?'open':p<.75?'half':'closed');if(p<1)requestAnimationFrame(frame);else{image.remove();$('.carry',cursor).src=sourceURL(item);cursor.classList.add('holding');resolve(true);}}requestAnimationFrame(frame);});}
+function stopDemo(announce=true){document.body.classList.add('capture-on');run++;gesture.cancel();if(manual){manual.source?.element.classList.remove('aiming','being-clamped');manual=null;gesture.unhold();}cursor.hidden=dialog.open;cursor.classList.remove('holding');if(!dialog.open)cursorAt(point.x,point.y);environment?.clearAim();$('#flight-layer').replaceChildren();if(announce)status('已取消夹取','按住文件拖动，松手放置');}
+async function grasp(item,source,to,token){
+  const rect=source.visual.getBoundingClientRect(),image=new Image();image.src=sourceURL(item);image.className='flight-item';$('#flight-layer').append(image);const start=performance.now();
+  return new Promise(resolve=>{function frame(now){
+    if(!alive(token)){image.remove();resolve(false);return;}
+    const p=clamp((now-start)/(animated()?540:1)),jaw=manual?.token===token?(manual.released?manual.destination:point):to;
+    const sample=pickupSample(p,rect,jaw,item.kind);Object.assign(image.style,{left:`${sample.x}px`,top:`${sample.y}px`,width:`${sample.width}px`,height:`${sample.height}px`,transform:`rotate(${sample.angle}deg) scaleY(${1-sample.compression})`});cursorAt(jaw.x,jaw.y,p<.48?'open':p<.75?'half':'closed');
+    if(p<1)requestAnimationFrame(frame);else{image.remove();$('.carry',cursor).src=sourceURL(item);cursor.classList.add('holding');resolve(true);}
+  }requestAnimationFrame(frame);});
+}
+function beginCapture(event,source){
+  if(event.button!==0)return;if(manual)stopDemo(false);
+  event.preventDefault();gesture.unhold();gesture.hold();gesture.press();run++;const token=run;
+  hasPointer=true;point.x=event.clientX;point.y=event.clientY;
+  manual={item:source.item,source,token,start:{x:event.clientX,y:event.clientY},ready:false,released:false};
+  source.element.classList.add('aiming','being-clamped');source.element.setPointerCapture(event.pointerId);
+  grasp(source.item,source,manual.start,token).then(ok=>{if(ok&&manual?.token===token){manual.ready=true;source.element.classList.remove('aiming','being-clamped');if(manual.released)finishManual();}});
+}
+async function copyItem(item){
+  environment.clipboard=item;
+  try{if(item.kind==='note'||item.kind==='code'){const response=await fetch(nativeURL(item.file));await navigator.clipboard?.writeText(await response.text());}
+  else if(item.kind==='photo'&&window.ClipboardItem){const response=await fetch(nativeURL(item.file)),blob=await response.blob();await navigator.clipboard?.write([new ClipboardItem({'image/png':blob})]);}}
+  catch{/* Browser file clipboard remains available to the desktop apps. */}
+  status('已复制',item.title);
+}
+function showAbout(){showDialog('屏幕夹子',`<div class="about-app"><img src="./assets/app-icon.webp" alt=""><div><h2>把灵感，夹在手边。</h2><p>文字、照片、文稿与文件，随手夹住，留在眼前。</p></div></div><a class="download" href="https://github.com/Quartzsyr/ClampEverything/releases/latest">下载 Mac 版 ↗</a><p>Apple Silicon · macOS 14+ · 开源免费</p><div class="developer"><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);}
 function showDialog(title,body){stopDemo(false);$('#dialog-content').innerHTML=`<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button aria-label="关闭">×</button></div><div class="dialog-body">${body}</div>`;$('.dialog-head button').onclick=()=>dialog.close();dialog.showModal();}
-function showFiles(){showDialog('挑一份真实文件',`<p>这些文件先由 Mac 应用读取，再通过同一个原生预览组件导出夹取后的样式。</p><div class="file-grid">${manifest.items.map(item=>`<button data-select="${item.kind}"><img src="${sourceURL(item)}" alt=""><span>${escapeHTML(item.title)}</span><small>${labels[item.kind]} · 选择文件</small></button>`).join('')}</div>`);$$('[data-select]',dialog).forEach(b=>b.onclick=()=>{dialog.close();choose(manifest.items.find(i=>i.kind===b.dataset.select));});}
 function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">重新整理演示桌面</button><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
-function showHelp(){showDialog('把需要的东西，夹在手边',`<p>鼠标就是夹子。选择底部任意文件，在右侧按住它并拖动，松手放到桌面。按 Esc 或右键取消。</p><p>夹住后，点金属夹收放，拖金属夹移动。靠近左右边缘放置会收起，悬停再展开。</p><p>所有夹取后图像由桌面应用的 CardSurface 原生组件直接渲染；文稿页面来自真实 PDF / DOCX。网页用于展示，不访问你的系统文件。</p>`);}
-function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();const mobile=innerWidth<=700;
-  const specs=mobile?[['photo',44,Math.max(365,innerHeight-350),'left',false]]:[['photo',44,innerHeight*.26,'left',false],['note',innerWidth-44,innerHeight*.50,'right',false],['document',innerWidth-44,innerHeight*.78,'right',true],['folder',44,innerHeight*.58,'left',true]];
-  for(const [kind,x,y,side,compact]of specs){const item=manifest.items.find(i=>i.kind===kind);if(!item)continue;const o=makeObject(item,{x,y:y-36,side,compact,initial:true});if(kind!=='photo')o.el.classList.add('initial-secondary');}
-}
-function bind(){document.addEventListener('click',e=>{const action=e.target.closest('[data-action]')?.dataset.action;if(action==='play'){status('现在由你来夹','按住右侧文件拖动，松手放置');$('#source-file').focus();}if(action==='files')showFiles();if(action==='settings')showSettings();if(action==='help')showHelp();if(action==='about')showDialog('屏幕夹子',`<p>把照片、文稿与灵感夹在手边。</p><p>本页使用真实样本文件和桌面端原生渲染，展示当前开发版本的外观与动画。</p><a href="https://github.com/Quartzsyr/ClampEverything/releases/latest">下载最新公开 Mac 版 ↗</a><div class="developer"><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);});
-  $('#source-file').addEventListener('click',()=>{if(performance.now()<suppressSourceClick)return;if(!manual&&!gesture.active)status('鼠标已是夹子','按住这份文件拖动，松手放置；Esc 取消');});
-  let aimTimer;const sourceFile=$('#source-file');sourceFile.addEventListener('pointerenter',()=>{clearTimeout(aimTimer);aimTimer=setTimeout(()=>sourceFile.classList.add('aiming'),250);});sourceFile.addEventListener('pointerleave',()=>{clearTimeout(aimTimer);if(!manual)sourceFile.classList.remove('aiming');});
-  $('#source-file').addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();gesture.unhold();gesture.hold();run++;const token=run;manual={item:selected,token,start:{x:e.clientX,y:e.clientY},ready:false,released:false};gesture.press();$('#source-file').setPointerCapture(e.pointerId);grasp(selected,manual.start,manual.start,token).then(ok=>{if(ok&&manual?.token===token){manual.ready=true;$('#source-file').classList.remove('aiming');if(manual.released)finishManual();}});});
-  document.addEventListener('pointermove',e=>{hasPointer=true;point.x=e.clientX;point.y=e.clientY;moveDrag(e);if(dialog.open){cursor.hidden=true;return;}if(manual?.ready)cursorAt(e.clientX,e.clientY,'closed');else if(!manual)cursorAt(e.clientX,e.clientY);});
-  document.addEventListener('pointerup',e=>{endDrag();if(manual&&gesture.release()){manual.released=true;manual.destination={x:e.clientX,y:e.clientY};if(manual.ready)finishManual();}});
+function showHelp(){showDialog('就在桌面上，随手夹取',`<p>鼠标就是夹子。直接点击聊天里的文字、收到的图片，或桌面上的 PDF、视频和其他文件，就能夹住；也可以按住拖动，松手放置。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>Dock 打开应用；窗口可以移动、关闭、最小化和缩放。文件右键可打开或快速查看。</p>`);}
+function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();environment?.reset();}
+function bind(){
+  document.addEventListener('click',event=>{const action=event.target.closest('[data-action]')?.dataset.action;
+    if(action==='about')showAbout();if(action==='settings')showSettings();if(action==='help')showHelp();if(action==='finder')environment.openFinder();if(action==='edit')environment.pasteFile();if(action==='windows')environment.showWindowMenu();});
+  document.addEventListener('pointermove',event=>{hasPointer=true;point.x=event.clientX;point.y=event.clientY;moveDrag(event);if(dialog.open){cursor.hidden=true;return;}if(manual?.ready)cursorAt(event.clientX,event.clientY,'closed');else if(!manual)cursorAt(event.clientX,event.clientY);});
+  document.addEventListener('pointerup',event=>{endDrag();if(manual&&gesture.release()){manual.released=true;manual.destination={x:event.clientX,y:event.clientY};if(manual.ready)finishManual();}});
   document.addEventListener('pointercancel',()=>{dragging=null;stopDemo(false);gesture.unhold();});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){stopDemo();return;}if(dialog.open)return; });
-  document.addEventListener('contextmenu',e=>{if(manual||gesture.active){e.preventDefault();stopDemo();}});window.addEventListener('blur',()=>{if(manual||gesture.active){stopDemo(false);gesture.unhold();}});
-  dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
-  const dock=$('#type-picker');dock.addEventListener('pointermove',e=>{if(!animated())return;$$('button',dock).forEach(button=>{const r=button.getBoundingClientRect(),distance=Math.abs(e.clientX-r.x-r.width/2),scale=1+.38*Math.exp(-.5*(distance/58)**2);button.style.setProperty('--dock-scale',scale.toFixed(3));button.style.setProperty('--dock-lift',`${((scale-1)*22).toFixed(2)}px`);});});dock.addEventListener('pointerleave',()=>{$$('button',dock).forEach(button=>{button.style.setProperty('--dock-scale',1);button.style.setProperty('--dock-lift','0px');});});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&manual)stopDemo();});
+  document.addEventListener('contextmenu',event=>{if(manual||gesture.active){event.preventDefault();stopDemo();}});
+  window.addEventListener('blur',()=>{if(manual||gesture.active){stopDemo(false);gesture.unhold();}});
+  dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
+  const dock=$('#app-dock');dock.addEventListener('pointermove',event=>{if(!animated())return;$$('[data-app]',dock).forEach(button=>{const rect=button.getBoundingClientRect(),distance=Math.abs(event.clientX-rect.x-rect.width/2),scale=1+.38*Math.exp(-.5*(distance/58)**2);button.style.setProperty('--dock-scale',scale.toFixed(3));button.style.setProperty('--dock-lift',`${((scale-1)*22).toFixed(2)}px`);});});dock.addEventListener('pointerleave',()=>{$$('[data-app]',dock).forEach(button=>{button.style.setProperty('--dock-scale',1);button.style.setProperty('--dock-lift','0px');});});
   document.documentElement.addEventListener('pointerleave',()=>{cursor.hidden=true;});
-  let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(layoutInitial,180);});
+  let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(()=>{stopDemo(false);for(const obj of objects.values()){obj.x=obj.docked?(obj.side==='left'?44:innerWidth-44):clamp(obj.x,44,innerWidth-44);obj.y=clamp(obj.y,26,Math.max(26,innerHeight-$('#desktop').getBoundingClientRect().top-(obj.item.height-26)-150));render(obj);}},180);});
 }
-function finishManual(){const m=manual;if(!m)return;suppressSourceClick=performance.now()+500;const p=m.destination,side=p.x<42?'left':p.x>innerWidth-42?'right':null;const obj=makeObject(m.item,{x:side==='left'?44:side==='right'?innerWidth-44:p.x,y:clamp(p.y-36,26,innerHeight-180),side:side||'left',compact:!!side,docked:!!side});obj.el.style.zIndex=++z;manual=null;gesture.cancel();document.body.classList.add('capture-on');cursorAt(p.x,p.y);cursor.classList.remove('holding');status('已夹住',m.item.title);}
-async function init(){document.body.classList.add('load-pending','capture-on');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();if(!manifest.items?.length)throw new Error('缺少原生预览');
-  $('#type-picker').innerHTML=manifest.items.map(item=>`<button data-kind="${item.kind}" aria-label="演示${labels[item.kind]}"><img src="${sourceURL(item)}" alt=""><span>${labels[item.kind]}</span></button>`).join('');$$('[data-kind]').forEach(b=>b.onclick=()=>choose(manifest.items.find(i=>i.kind===b.dataset.kind)));
-  choose(manifest.items.find(i=>i.kind==='photo')||manifest.items[0],false);bind();layoutInitial();document.body.classList.remove('load-pending');document.body.classList.add('capture-on');status('鼠标已是夹子','按住右侧文件拖动，松手放置');
+function finishManual(){
+  const current=manual;if(!current)return;const destination=current.destination,edge=destination.x<42?'left':destination.x>innerWidth-42?'right':null;
+  const side=edge||(destination.x>innerWidth/2?'right':'left');
+  const hook=side==='left'?44:current.item.width-44;
+  const x=edge?(edge==='left'?44:innerWidth-44):clamp(destination.x,hook+5,innerWidth-current.item.width+hook-5);
+  const desktopTop=$('#desktop').getBoundingClientRect().top;
+  const obj=makeObject(current.item,{x,y:clamp(destination.y-desktopTop,26,Math.max(26,innerHeight-desktopTop-(current.item.height-26)-150)),side,compact:!!edge,docked:!!edge});
+  obj.el.style.zIndex=++z;current.source.element.classList.remove('aiming','being-clamped');manual=null;gesture.cancel();cursorAt(destination.x,destination.y);cursor.classList.remove('holding');status('已夹住',current.item.title);
+}
+async function init(){
+  document.body.classList.add('load-pending','capture-on');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();
+  environment=createDesktop({manifest,nativeURL,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
+  bind();await environment.mount();document.body.classList.remove('load-pending');status('鼠标就是夹子','直接夹文字、图片或桌面文件；按住拖动，松手放下');
 }
 function updateClock(){$('#clock').textContent=new Intl.DateTimeFormat('zh-CN',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}updateClock();setInterval(updateClock,30000);
 init().catch(error=>{document.body.classList.remove('load-pending');status('原生演示素材加载失败','请刷新页面重试');console.error(error);});

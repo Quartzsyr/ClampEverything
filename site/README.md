@@ -1,36 +1,49 @@
-# 屏幕夹子 · 原生视觉桌面
+# 屏幕夹子 · 一个可交互的 Mac 桌面
 
 公开页面：https://quartzsyr.github.io/ClampEverything/
 
-鼠标默认就是夹子。切换文件只选中；在右侧文件上按下并拖动，松开鼠标放置。没有自动夹取或自动播放，不需要修饰键。Esc 或右键取消。
+交互参考 [Tendedero](https://tendedero.app/) 将产品放进桌面使用场景的方式。页面打开后，文件已经摆在桌面上，信息和浏览器窗口也已经打开。演示发生在使用过程中，没有「先选类型，再生成样本」的步骤。
 
-## 素材来源
+## 桌面与应用逻辑
 
-`assets/files/` 保存真实 PNG、TXT、三页 PDF、三页 DOCX、Swift、HTML、WAV、MOV、DAT、ZIP 及示例文件夹。它们经桌面端 `ClipStore.importFiles` 读取，再交给真实 `CardSurface` / `ItemBody` / `DocumentPages` / `PhotoBody` 绘制。
+- 桌面直接放置 PDF、Word、视频、图片、文件夹、代码、录音、归档、文本及数据文件。点击即可夹取，也可以按住拖动，松手放置。
+- 信息窗口里的文字直接读取实际 TXT 文件，收到的照片、PDF 与视频来自同一组真实文件。夹取后原消息与原附件保留。
+- Dock 只有应用：访达、信息、Safari、备忘录、QuickTime、屏幕夹子和废纸篓。它打开、激活或恢复应用窗口，不选择夹取类型。
+- 应用窗口支持移动、调整大小、关闭、最小化和缩放。关闭窗口保留应用的运行状态；Dock 再次点击可打开窗口。
+- 访达可以进入文件夹、返回桌面。文件右键可打开、快速查看、复制、在访达中显示。桌面空白区域可拖动选择文件。
+- 播放器读取真实 MOV / WAV，播放控件和夹取画面分别响应。
+- 拖金属夹移动已夹物件；靠边放置收起，悬停展开。拖到废纸篓可移除夹项，原文件保留；废纸篓中可放回。
+- 点击已夹内容复制，拖出内容可复制到访达或信息。放入信息先成为草稿，点击发送后才进入会话。
+- 没有自动播放或自动夹取。Esc、右键取消当前夹取。桌面窗口、Dock 和菜单本身不成为夹取内容。
 
-`assets/native/` 是这些原生组件的透明离屏渲染，不是网页用 HTML 重排的文件内容。文字字体、原生文件图标、文件夹目录、纸面磨损、夹子、夹口阴影均来自同一次原生绘制。`provenance.json` 记录对应源文件摘要；`manifest.json` 记录文件对应关系和几何尺寸。
+## 原生素材
 
-- 展开与收起各自导出左右侧状态，逻辑尺寸与原软件一致，Retina 2×。
-- 组装图四周留 32 点透明安全区，悬点为左侧 `(44,26)`、右侧 `(width−44,26)`。
-- 金属夹已包含在原生组装图内，与内容一起绕悬点翻转；钉子独立固定。
-- 原生收起图为 64×60，已包含原软件 ±105° 姿态，网页不重复旋转。
-- PDF 与 DOCX 各三页，页面均由真实原文件生成。翻页只转动导出的原生裸纸面，夹子保持原位。
-- 鼠标夹子张开、半开、合拢三态也由 `ImageGenCursorClip` 导出。
+`assets/files/` 保存真实 PNG、TXT、三页 PDF、三页 DOCX、Swift、HTML、WAV、MOV、DAT、ZIP 及示例文件夹。它们先由桌面端 `ClipStore.importFiles` 读取，再由实际 `CardSurface` / `ItemBody` / `DocumentPages` / `PhotoBody` 绘制。
 
-网页使用简约纸质燕尾夹壁纸与 Liquid Glass 控件，底部 Dock 根据鼠标距离放大。壁纸由内置 image_gen 生成，最终提示词保存在 `native-export/WALLPAPER.md`。网页用 CSS / Web Animations 驱动夹取、回摆和收放。它演示软件外观，不访问用户系统文件，也不将浏览器行为伪装成系统文件操作。原文件可通过右侧「查看原文件」打开。
+`assets/native/` 保存这些原生组件的透明离屏渲染。文字字体、文件图标、目录、纸面磨损、金属夹及夹口阴影来自原生组件。`provenance.json` 记录源文件摘要，`manifest.json` 记录原文件与图像的对应关系。
 
-## 重新导出
+- 原生组装图为 Retina 2×，四周有 32 点透明安全区。
+- 悬点为左侧 `(44,26)`、右侧 `(width−44,26)`；夹子与内容一起旋转，钉子固定。
+- 收起图逻辑尺寸 64×60，已包含原生 ±105° 姿态。
+- PDF / DOCX 各三页均来自原文件；翻页使用单独的原生纸面，金属夹保持不动。
+- 鼠标夹子三态由 `ImageGenCursorClip` 导出。
 
-原生导出器副本在 `native-export/WebsiteAssetExporter.swift`。此次素材由本地 v1.7.16 源码与其原生组件生成；该副本记录导出实现，不作为网页代码运行。完整原生导出入口与 `CardSurface.showsNail` 参数保留在本地桌面源码中。
+应用场景的窗口由网页实现，夹取后呈现的物件使用原生渲染。网页内部维护场景文件和剪贴板；普通文本、代码和图片同时尝试浏览器系统剪贴板。它不访问用户个人文件或真实聊天账户。所有文件与消息都是仓库中的固定素材。
+
+壁纸由内置 image_gen 生成；最终提示词在 `native-export/WALLPAPER.md`。Dock 图标是项目内 SVG，位于 `assets/apps/icons.svg`。
+
+## 重新导出原生视觉
+
+导出器副本：`native-export/WebsiteAssetExporter.swift`。此次素材基于本地 v1.7.16 组件；副本记录导出实现，网页不执行 Swift。
 
 ```sh
 swift build
 .build/debug/ClampEverything --export-website "$PWD/site/assets/native"
 ```
 
-导出使用隔离的临时资料库和离屏透明窗口，不读取个人文件，不对当前桌面截图。修改原生视图后应重新导出，而非在网页重画内容。
+导出使用临时资料库与离屏透明窗口，不读取个人文件。修改原生视图后应重新导出。
 
-## 本地预览与验证
+## 预览与验证
 
 ```sh
 cd site
@@ -39,6 +52,8 @@ npm test
 npm run preview
 ```
 
-浏览器打开 http://127.0.0.1:5173/ 。安装 Playwright 后可运行 `node tests/browser.cjs`；`SITE_URL` 可指定公开站点，`PLAYWRIGHT_MODULE` 可指定现有安装。
+打开 http://127.0.0.1:5173/ 。安装 Playwright 后运行 `node tests/browser.cjs`；`SITE_URL` 可指定公开站点，`PLAYWRIGHT_MODULE` 可指定已有安装。
 
-回归涵盖：无自动播放、真实文件选择、默认夹子光标、直接拖动与取消、手动放置、真实 Word 页面、原生收起/悬停展开、开发者信息及窄屏布局。GitHub Actions 只发布 HTML、CSS、JS 和 assets；原生导出参考源码与测试不进入网站部署包。
+浏览器回归涵盖：打开页面即能夹取各类文件、聊天文字与图片、单击夹取不打开应用窗口、原文与原件保留、文稿分页、收放、窗口与 Dock 语义、实际视频播放、跨应用复制、信息草稿、取消及窄屏桌面。
+
+GitHub Actions 发布静态页面、JS 和 assets；测试与原生导出参考代码不进入部署包。
