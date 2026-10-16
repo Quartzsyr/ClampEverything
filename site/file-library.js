@@ -27,6 +27,13 @@ export class FileLibrary {
       return await Promise.all(entries.filter(e=>['note','word','code'].includes(e.kind)).map(e=>this.register(new File([e.bytes||e.blob],e.name,{type:e.mime}),e.item)));
     }catch{return [];}
   }
+  async saveDock(item){
+    try{const db=await this.database();if(!db)return false;const record=this.get(item),bytes=await record.file.arrayBuffer();await new Promise((resolve,reject)=>{const tx=db.transaction('working','readwrite');tx.objectStore('working').put({kind:'dock:'+item.fileId,name:record.name,mime:record.mime,bytes,item});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});return true;}catch{return false;}
+  }
+  async restoreDock(){
+    try{const db=await this.database();if(!db)return [];const entries=await new Promise((resolve,reject)=>{const request=db.transaction('working').objectStore('working').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});return await Promise.all(entries.filter(entry=>entry.kind.startsWith('dock:')).map(entry=>this.register(new File([entry.bytes],entry.name,{type:entry.mime}),entry.item)));}catch{return [];}
+  }
+  async removeDock(id){try{const db=await this.database();if(db)await new Promise((resolve,reject)=>{const tx=db.transaction('working','readwrite');tx.objectStore('working').delete('dock:'+id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}catch{}}
   async clearWorking(){try{const db=await this.database();if(db)await new Promise((resolve,reject)=>{const tx=db.transaction('working','readwrite');tx.objectStore('working').clear();tx.oncomplete=resolve;tx.onerror=event=>reject(event.target.error||tx.error||new Error('本地存储写入失败'));});}catch{}}
   async createText(text,template,name='新便笺.txt') {
     return this.register(new File([text],name,{type:'text/plain;charset=utf-8'}),template,{title:name.replace(/\.txt$/,''),textContent:text,left:'note-blank-left.webp',right:'note-blank-right.webp'});

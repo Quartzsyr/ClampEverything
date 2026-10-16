@@ -107,3 +107,13 @@ HTML 原文件通过 `.html.bin` 二进制副本读取和校验，避免自定�
 下载网页包含三组实际桌面操作截图，素材与取景方法记录于 `assets/usage/provenance.json`。从仓库根目录启动本地预览后，可用 `node site/scripts/capture-usage.cjs` 重新录制；通过 `PLAYWRIGHT_MODULE` 指定 Playwright 路径。PDF 索引可用 `swift site/scripts/extract-pdf-text.swift site/assets/files/旅行手记.pdf site/assets/files/旅行手记.text.json` 更新。
 
 新增浏览器回归：`node site/tests/text-capture.cjs`；可设置 `ENGINE=webkit` 和 `PLAYWRIGHT_BROWSERS_PATH` 检查 WebKit。覆盖正文、选区、内嵌网页、PDF、Word、代码片段、输入框、设置、原文件保留和截图加载。
+
+### Dock 与应用菜单
+
+黄色窗口按钮和 ⌘M 将窗口以曲面神奇效果收入对应 Dock 图标，点击该图标反向展开。PDF、Word、代码、图像、音视频、访达及设置／帮助／开发者／关于面板共用同一流程；收放保留真实文档、滚动位置、输入和编辑状态。动画使用当前窗口内容绘制网格，WebGL 不可用时保留 Canvas 曲面，关闭动效或系统减少动态效果时直接切换。窗口尺寸变化和快速重复操作不会遗留透明窗口。
+
+桌面文件可以拖到 Dock 保存快捷入口，支持重排、拖出移除、右键移除，原文件保留。快捷入口在本地恢复，编辑桌面文件后对应入口随之更新；新夹出的 TXT 等独立文件保存自己的真实字节。图标较多时自动缩小到可读尺寸，再使用横向滚动，提示不随图标区域被裁切。
+
+左上角夹子 Logo 打开应用菜单，包含关于、开发者信息（Quartz · UESTC · SYRQuartz@gmail.com）、设置、帮助、所有窗口收放与 Mac 版下载。支持方向键、Esc、⌘,。同源网页与 Word 文档中同样支持窗口快捷键。
+
+窗口内容的本地栅格化使用 [html2canvas 1.4.1](https://html2canvas.hertzen.com/documentation/)，MIT 许可证保留于 `assets/vendor/html2canvas/LICENSE`；不向外上传窗口内容。曲面与纹理网格实现位于 `assets/genie-motion.js`、`assets/genie-renderer.js`。回归运行 `node site/tests/dock-genie.cjs`，可设置 `ENGINE=webkit` 检查 WebKit。

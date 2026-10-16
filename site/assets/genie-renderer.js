@@ -1,0 +1,14 @@
+// A single textured mesh keeps adjacent rows continuous, without canvas clip seams.
+export function createMeshRenderer(canvas,image){
+ const gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:true});if(!gl)return null;
+ const shader=(type,source)=>{const value=gl.createShader(type);gl.shaderSource(value,source);gl.compileShader(value);if(!gl.getShaderParameter(value,gl.COMPILE_STATUS))throw new Error('Window mesh shader');return value;};
+ try{
+  const vertex=shader(gl.VERTEX_SHADER,'attribute vec2 position;attribute vec2 uv;uniform vec2 resolution;varying vec2 texturePoint;void main(){texturePoint=uv;gl_Position=vec4(position.x/resolution.x*2.0-1.0,1.0-position.y/resolution.y*2.0,0.0,1.0);}');
+  const fragment=shader(gl.FRAGMENT_SHADER,'precision mediump float;varying vec2 texturePoint;uniform sampler2D picture;uniform float opacity;void main(){vec4 color=texture2D(picture,texturePoint);gl_FragColor=vec4(color.rgb,color.a*opacity);}');
+  const program=gl.createProgram();gl.attachShader(program,vertex);gl.attachShader(program,fragment);gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))return null;gl.useProgram(program);
+  const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(const [name,offset] of [['position',0],['uv',8]]){const location=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,2,gl.FLOAT,false,16,offset);}
+  const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);for(const [key,value] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,key,value);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
+  gl.uniform1i(gl.getUniformLocation(program,'picture'),0);const resolution=gl.getUniformLocation(program,'resolution'),opacity=gl.getUniformLocation(program,'opacity');gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+  return {draw(rows,alpha){gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(resolution,innerWidth,innerHeight);gl.uniform1f(opacity,alpha);const values=[];for(let i=0;i<rows.length-1;i++){const a=rows[i],b=rows[i+1],t0=i/(rows.length-1),t1=(i+1)/(rows.length-1);values.push(a.left,a.y,0,t0,a.right,a.y,1,t0,b.left,b.y,0,t1,a.right,a.y,1,t0,b.right,b.y,1,t1,b.left,b.y,0,t1);}gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(values),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,values.length/4);},dispose(){gl.deleteTexture(texture);gl.deleteBuffer(buffer);gl.deleteProgram(program);gl.deleteShader(vertex);gl.deleteShader(fragment);gl.getExtension('WEBGL_lose_context')?.loseContext();}};
+ }catch{return null;}
+}

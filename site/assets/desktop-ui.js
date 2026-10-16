@@ -76,18 +76,18 @@ export function createTargetGlow({enabled, capturing}) {
 
 export function bindDock(dock,animated){
   dock.dockController?.abort();const controller=new AbortController();dock.dockController=controller;const options={signal:controller.signal};
-  const tooltip=document.createElement('span');tooltip.className='dock-tooltip';tooltip.hidden=true;tooltip.setAttribute('aria-hidden','true');dock.append(tooltip);
-  const reset=()=>{for(const button of dock.querySelectorAll('[data-app]')){button.style.setProperty('--dock-scale',1);button.style.setProperty('--dock-lift','0px');}tooltip.hidden=true;};
-  function label(button){if(!button){tooltip.hidden=true;return;}tooltip.textContent=button.getAttribute('aria-label');tooltip.style.left=`${button.offsetLeft+button.offsetWidth/2}px`;tooltip.hidden=false;}
+  const tooltip=document.createElement('span');tooltip.className='dock-tooltip';tooltip.hidden=true;tooltip.setAttribute('aria-hidden','true');dock.parentElement.querySelector(':scope>.dock-tooltip')?.remove();dock.parentElement.append(tooltip);
+  const reset=()=>{for(const button of dock.querySelectorAll('button')){button.style.setProperty('--dock-scale',1);button.style.setProperty('--dock-lift','0px');}tooltip.hidden=true;};
+  function label(button){if(!button){tooltip.hidden=true;return;}tooltip.textContent=button.getAttribute('aria-label')+(Number(button.dataset.minimizedCount)>0?' · 已收入 Dock':'');const r=button.getBoundingClientRect(),parent=dock.parentElement.getBoundingClientRect();tooltip.style.left=`${Math.max(35,Math.min(parent.width-35,r.x+r.width/2-parent.x))}px`;tooltip.hidden=false;}
   dock.addEventListener('pointermove',event=>{
-    for(const button of dock.querySelectorAll('[data-app]')){
+    for(const button of dock.querySelectorAll('button')){
       const r=button.getBoundingClientRect(),distance=Math.abs(event.clientX-r.x-r.width/2),scale=animated()?1+.14*Math.exp(-.5*(distance/42)**2):1;
       button.style.setProperty('--dock-scale',scale.toFixed(3));button.style.setProperty('--dock-lift',`${((scale-1)*28).toFixed(2)}px`);
     }
-    label(event.target.closest('[data-app]'));
+    label(event.target.closest('button'));
   },options);
-  dock.addEventListener('pointerleave',reset,options);
-  dock.addEventListener('focusin',event=>{if(event.target.matches(':focus-visible'))label(event.target.closest('[data-app]'));},options);
+  dock.addEventListener('pointerleave',reset,options);dock.addEventListener('scroll',reset,options);
+  dock.addEventListener('focusin',event=>{if(event.target.matches(':focus-visible'))label(event.target.closest('button'));},options);
   dock.addEventListener('focusout',()=>{tooltip.hidden=true;},options);
   dock.addEventListener('click',()=>{tooltip.hidden=true;},options);
 }
