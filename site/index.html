@@ -1,61 +1,26 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#bec9bd">
-  <meta name="description" content="屏幕夹子 ClampEverything，把照片、文稿、网页和灵感夹在屏幕边缘。来这个可交互的 Mac 桌面，体验夹取、翻页和随手放置。">
-  <meta property="og:title" content="屏幕夹子 · 把灵感，夹在手边。">
-  <meta property="og:description" content="一个小夹子，让参考留在眼前。试试这个可交互的 Mac 桌面。">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://quartzsyr.github.io/ClampEverything/">
-  <meta property="og:image" content="https://quartzsyr.github.io/ClampEverything/assets/social.jpg">
-  <link rel="canonical" href="https://quartzsyr.github.io/ClampEverything/">
-  <link rel="icon" href="./assets/app-icon.webp" type="image/webp">
-  <link rel="stylesheet" href="./style.css">
-  <title>屏幕夹子 · 把灵感，夹在手边。</title>
-  <script type="module" src="./main.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#bac8bc">
+<title>屏幕夹子 · 把灵感，夹在手边。</title>
+<meta name="description" content="用真实文件与桌面端原生渲染，演示屏幕夹子的夹取、悬挂、收起和展开。">
+<meta property="og:title" content="屏幕夹子 · 把灵感，夹在手边。"><meta property="og:image" content="https://quartzsyr.github.io/ClampEverything/assets/social.jpg">
+<link rel="canonical" href="https://quartzsyr.github.io/ClampEverything/"><link rel="icon" href="./assets/app-icon.webp"><link rel="stylesheet" href="./style.css"><script type="module" src="./main.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#intro">跳到介绍</a>
-  <div class="wallpaper" aria-hidden="true"><div class="sun"></div><div class="ridge ridge-far"></div><div class="ridge ridge-middle"></div><div class="ridge ridge-near"></div><div class="grain"></div></div>
-  <header class="menubar">
-    <nav class="menu-left" aria-label="菜单栏">
-      <button class="brand-button" data-action="about"><img src="./assets/app-icon.webp" alt="" width="22" height="22"><strong>屏幕夹子</strong></button>
-      <button class="menu-item" data-action="add">文件</button>
-      <button class="menu-item" data-action="settings">显示</button>
-      <button class="menu-item" data-action="help">帮助</button>
-    </nav>
-    <div class="menu-right"><span class="demo-indicator"><i></i>互动桌面</span><button class="icon-button" data-action="theme" aria-label="切换深浅桌面" title="切换深浅桌面"><svg viewBox="0 0 24 24"><path d="M19 15A8 8 0 0 1 9 5a8 8 0 1 0 10 10Z"/></svg></button><span class="battery" aria-hidden="true"></span><time id="clock"></time></div>
-  </header>
-  <main id="desktop" aria-label="屏幕夹子的可交互 Mac 桌面">
-    <section id="intro" class="intro">
-      <div class="eyebrow"><span></span> A LITTLE CLIP. A LITTLE MORE CALM.</div>
-      <h1>把灵感，<br>夹在手边<span class="title-dot">。</span></h1>
-      <p class="intro-copy">照片、文稿、网页，还有一闪而过的念头。<br>随手夹住，让需要的东西留在眼前。</p>
-      <div class="intro-actions"><a class="download-button" id="download" href="https://github.com/Quartzsyr/ClampEverything/releases/latest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/></svg>下载 Mac 版<span>↗</span></a><button class="try-button" data-action="tour">实际操作 <span>→</span></button></div>
-      <p class="compatibility">Apple Silicon · macOS 14+ <span>开源，免费</span></p>
-      <div class="little-note"><svg viewBox="0 0 72 38" aria-hidden="true"><path d="M3 5C12 33 44 35 66 17m-8-1 9-1-3 9"/></svg><span>边上的东西，都可以动一动</span></div>
-    </section>
-    <div id="objects" aria-label="夹在桌面上的示例内容"></div>
-    <aside class="desktop-files" aria-label="桌面示例文件">
-      <button data-open="folder"><span class="desktop-folder"></span><span>周末旅行</span></button>
-      <button data-open="document"><span class="desktop-paper"><b>PDF</b><i></i><i></i><i></i></span><span>旅行手记.pdf</span></button>
-      <button data-open="photo"><img src="./assets/landscape.svg" width="57" height="42" alt="山间风景"><span>山间湖泊.png</span></button>
-    </aside>
-    <section id="workbench" class="workbench" aria-label="夹取练习窗口" hidden></section>
-    <div id="receiver" class="receiver" hidden><button data-action="add" aria-label="添加一份示例内容">＋</button></div>
-    <div id="flight-layer" class="flight-layer" aria-hidden="true"></div>
-    <div id="cursor-clip" class="cursor-clip" hidden aria-hidden="true"><img src="./assets/cursor-open.webp" alt=""><span class="carried"></span></div>
-  </main>
-  <div class="desktop-bottom">
-    <div class="playback-bar" aria-label="桌面演示控制"><button data-action="capture" id="capture-toggle" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 3 12 9-6 1-3 6Z"/><path d="m13 13 4 7"/></svg><span>打开示例访达</span><kbd>⌥</kbd></button><span class="bar-divider"></span><button data-action="tour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 10 7-10 7Z"/></svg><span>操作指引</span></button><button class="reset-button" data-action="reset" aria-label="重置桌面" title="重置桌面"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8a8 8 0 1 1-1 7M5 3v6h6"/></svg></button></div>
-    <nav id="dock" class="dock" aria-label="添加不同类型的示例"></nav>
-  </div>
-  <footer class="desktop-footer"><button data-action="about">一个小夹子，让桌面松一口气。</button><div><a href="https://github.com/Quartzsyr/ClampEverything" target="_blank" rel="noopener">GitHub ↗</a><button data-action="help">使用说明</button></div></footer>
-  <div id="clipboard-status" role="status">按住 ⌥ Option 夹取 · 网页内使用示例文件</div>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <dialog id="info-dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
-  <noscript><div class="noscript">开启 JavaScript 可以体验互动桌面。<a href="https://github.com/Quartzsyr/ClampEverything/releases/latest">下载屏幕夹子</a>，适用于 Apple Silicon、macOS 14+。</div></noscript>
-</body>
-</html>
+<a class="skip-link" href="#intro">跳到介绍</a>
+<div class="wallpaper" aria-hidden="true"><div class="sun"></div><div class="ridge far"></div><div class="ridge middle"></div><div class="ridge near"></div></div>
+<header class="menubar"><div class="menu-left"><button data-action="about" class="brand"><img src="./assets/app-icon.webp" alt=""><b>屏幕夹子</b></button><button data-action="settings">设置</button><button data-action="help">帮助</button></div><div class="menu-right"><span class="demo-label"><i></i> 原生视觉演示</span><time id="clock"></time></div></header>
+<main id="desktop">
+<section id="intro" class="intro"><p class="eyebrow">CLAMP EVERYTHING / FOR MAC</p><h1>把灵感，<br>夹在手边<span>。</span></h1><p class="description">一张照片，一页文稿，一瞬灵感。<br>随手夹住，留在触手可及的地方。</p><div class="intro-actions"><a class="download" href="https://github.com/Quartzsyr/ClampEverything/releases/latest">下载 Mac 版 <span>↗</span></a><button class="play" data-action="play">随手夹一下 <span>↗</span></button></div><p class="compatibility">Apple Silicon · macOS 14+ · 开源免费</p><p class="provenance">真实文件 · 桌面端原生渲染</p></section>
+<div id="objects" aria-label="原生夹取物件"></div>
+<aside id="source-area" class="source-area" aria-label="真实文件样本"><div class="source-heading"><span>手边的一份</span><button data-action="files" aria-label="选择其他文件">···</button></div><button id="source-file" class="source-file" aria-label="按住拖动夹取当前文件"><img id="source-image" alt=""><span id="source-name"></span></button><a id="source-download" download>查看原文件 ↗</a><span class="source-hint">按住拖动，松手留下</span></aside>
+<div id="demo-cursor" class="demo-cursor" hidden aria-hidden="true"><img class="carry" alt=""><img class="metal" src="./assets/native/cursor-open.png" alt=""></div>
+<div id="flight-layer" aria-hidden="true"></div>
+</main>
+<div id="demo-status" class="demo-status" role="status" aria-live="polite"></div>
+<footer class="demo-dock"><button data-action="play" class="replay" aria-label="查看手动夹取操作">↗</button><div id="type-picker" class="type-picker" aria-label="选择要演示的文件"></div><button data-action="files" class="more-files" aria-label="查看全部真实文件">···</button></footer>
+<div class="page-footer"><button data-action="help">拖夹子移动 · 点夹子收放</button><a href="https://github.com/Quartzsyr/ClampEverything" target="_blank" rel="noopener">GitHub ↗</a></div>
+<dialog id="info-dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+<noscript><p>开启 JavaScript 查看演示，或<a href="https://github.com/Quartzsyr/ClampEverything/releases/latest">下载 Mac 版</a>。</p></noscript>
+</body></html>

@@ -1,30 +1,36 @@
-# 屏幕夹子交互桌面
+# 屏幕夹子 · 原生视觉桌面
 
-GitHub Pages 静态宣传页，无第三方运行时依赖。下载链接始终指向最新公开 Release；网页的交互基准是本地桌面应用实现，不能据此推断公开版已包含全部功能。
+公开页面：https://quartzsyr.github.io/ClampEverything/
 
-## 操作依据
+鼠标默认就是夹子。切换文件只选中；在右侧文件上按下并拖动，松开鼠标放置。没有自动夹取或自动播放，不需要修饰键。Esc 或右键取消。
 
-| 桌面源代码 | 网页行为 |
-| --- | --- |
-| `ClampCore/HoldShortcut.swift`, `PointClampController.receive` | 按住 Option，按下对象，保持修饰键拖动，松开鼠标放置。提前松开 Option、Esc、右键取消；完成后必须松开并重新按 Option |
-| `PointClampController.capture`, `CursorPickupMotion.swift` | 压缩、抬起、缩入夹口、随指针移动、释放时放置；释放位置固定，不随之后鼠标移动漂移 |
-| `PaperMotion.swift`, `Windows.swift` | 42 点边缘吸附；64×60 收起区域；悬停 350ms 展开，离开 450ms 收起，点击展开保持 |
-| `HangingMetalClip.swift`, `MinimalSurfaceLayout.swift` | 夹子与纸面绕同一悬点翻转；夹子约 20×26 点，独立于内容大小；缩略内容 30×22.5 |
-| `PreviewSizes.swift` | 各类型独立大小，65%–180% |
-| `FolderEntryList.swift` | 条目主体复制，只有右侧箭头进入目录；滚动展示所有条目 |
-| `ContentDragView`, `DocumentReadingPreview` | 点击文稿主体复制；拖主体复制，拖金属夹移动；左侧装订线向外翻页 |
-| `MinimalMediaObject` | 卡带、胶片的主体点击复制，不虚构内嵌播放按钮 |
-| `GuideExamples.swift` | 周末计划文字、LittleNote.swift、田野手记网页和山间湖泊构图 |
+## 素材来源
 
-## 浏览器边界
+`assets/files/` 保存真实 PNG、TXT、三页 PDF、三页 DOCX、Swift、HTML、WAV、MOV、DAT、ZIP 及示例文件夹。它们经桌面端 `ClipStore.importFiles` 读取，再交给真实 `CardSurface` / `ItemBody` / `DocumentPages` / `PhotoBody` 绘制。
 
-网页模拟内置文件及文件剪贴板。点击 PDF / DOCX / 文件夹 / 音视频复制的是示例文件身份，而不是将正文冒充原件；在示例访达使用 Command-V / Ctrl-V 验证交接。拖出示例内容保留原夹项。普通文本同时尝试系统文本剪贴板。
+`assets/native/` 是这些原生组件的透明离屏渲染，不是网页用 HTML 重排的文件内容。文字字体、原生文件图标、文件夹目录、纸面磨损、夹子、夹口阴影均来自同一次原生绘制。`provenance.json` 记录对应源文件摘要；`manifest.json` 记录文件对应关系和几何尺寸。
 
-浏览器不能访问辅助功能树、Finder 文件 URL 剪贴板、系统关联应用、全局快捷键或系统屏幕边缘。右键打开/快速查看展示示例预览。没有迁移本机图像主体分割，也没有画假主体轮廓。网页不宣称能替代原生应用。触屏访问仅浏览；完整夹取流程需要键盘和指针。
+- 展开与收起各自导出左右侧状态，逻辑尺寸与原软件一致，Retina 2×。
+- 组装图四周留 32 点透明安全区，悬点为左侧 `(44,26)`、右侧 `(width−44,26)`。
+- 金属夹已包含在原生组装图内，与内容一起绕悬点翻转；钉子独立固定。
+- 原生收起图为 64×60，已包含原软件 ±105° 姿态，网页不重复旋转。
+- PDF 与 DOCX 各三页，页面均由真实原文件生成。翻页只转动导出的原生裸纸面，夹子保持原位。
+- 鼠标夹子张开、半开、合拢三态也由 `ImageGenCursorClip` 导出。
 
-PDF 示例额外两页是用于测试翻页的示例内容，非软件内置 PDF 的原页；纸面和 macOS 的字体渲染在浏览器中会有差异。
+网页使用简约纸质燕尾夹壁纸与 Liquid Glass 控件，底部 Dock 根据鼠标距离放大。壁纸由内置 image_gen 生成，最终提示词保存在 `native-export/WALLPAPER.md`。网页用 CSS / Web Animations 驱动夹取、回摆和收放。它演示软件外观，不访问用户系统文件，也不将浏览器行为伪装成系统文件操作。原文件可通过右侧「查看原文件」打开。
 
-## 本地验证
+## 重新导出
+
+原生导出器副本在 `native-export/WebsiteAssetExporter.swift`。此次素材由本地 v1.7.16 源码与其原生组件生成；该副本记录导出实现，不作为网页代码运行。完整原生导出入口与 `CardSurface.showsNail` 参数保留在本地桌面源码中。
+
+```sh
+swift build
+.build/debug/ClampEverything --export-website "$PWD/site/assets/native"
+```
+
+导出使用隔离的临时资料库和离屏透明窗口，不读取个人文件，不对当前桌面截图。修改原生视图后应重新导出，而非在网页重画内容。
+
+## 本地预览与验证
 
 ```sh
 cd site
@@ -33,4 +39,6 @@ npm test
 npm run preview
 ```
 
-打开 http://127.0.0.1:5173/ 。`tests/hold-gesture.test.mjs` 覆盖按住、提前松开、取消和重新激活。`tests/motion.test.mjs` 验证翻转和夹取物理参数。网页发布仅包含静态文件及素材，不包含原生项目或安装包。
+浏览器打开 http://127.0.0.1:5173/ 。安装 Playwright 后可运行 `node tests/browser.cjs`；`SITE_URL` 可指定公开站点，`PLAYWRIGHT_MODULE` 可指定现有安装。
+
+回归涵盖：无自动播放、真实文件选择、默认夹子光标、直接拖动与取消、手动放置、真实 Word 页面、原生收起/悬停展开、开发者信息及窄屏布局。GitHub Actions 只发布 HTML、CSS、JS 和 assets；原生导出参考源码与测试不进入网站部署包。

@@ -1,0 +1,19 @@
+{
+  "application": "ClampEverything",
+  "nativeVersion": "1.7.16",
+  "exportedOn": "2026-10-16",
+  "method": "Offscreen NSHostingView, real CardSurface, real fixture files, Retina 2x",
+  "personalFilesUsed": false,
+  "sourceSHA256": {
+    "CardViews.swift": "ea4aca67bf3e25649ab4e7339a712dc4b5588a9f246bf3894a0384a16f94a560",
+    "MinimalPinnedContent.swift": "1b2fbc44db4b0bd97a8703bc711d1a4ff80678da5dea7c584110d1503c65c405",
+    "MinimalSurfaceLayout.swift": "525e19f3a6a1aa4d867f24bc62a5b0c24dbff8e6068796805ccff30441b706b9",
+    "DocumentReadingPreview.swift": "261a867b639fc078fd89d77c0f7be5dab9606909467753f00b5818332c65da88",
+    "DocumentPages.swift": "9fb1851df33ce3139a0ed5a3ab7a962f13e6c051e54a486aad6c41ef9773a369",
+    "ManuscriptPaper.swift": "ad11c6022768dd6af0efb0be426850367a50802e87466ed3e3e180cb9b631301",
+    "CompactClipView.swift": "e56ea529967589d1d46997b421393beca1a81ee8ebf49d4958f13f30dd877303",
+    "HangingMetalClip.swift": "e9fb108df1420ae10d7c55dc1d4e349cfe5e00c52f8425f34624eae9305e4472",
+    "CursorPickupMotion.swift": "2b434f12020b558a8905f43e53cc0d8ed0aa88418277e650a572f36f2a70de4c",
+    "WebsiteAssetExporter.swift": "38269b6b4cd32882e46ac106f697df61734cf221733c9ebb29b8b1467baddf07"
+  }
+}
