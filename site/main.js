@@ -1,5 +1,5 @@
 import { bindSystemMenu } from './assets/system-menu.js';
-import { createDesktop } from './desktop.js?v=20261016-scene';
+import { createDesktop } from './desktop.js?v=20261016-controls';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
 import { FileLibrary } from './file-library.js?v=20261016-dock';
 import { HoldGesture } from './hold-gesture.js';
@@ -172,7 +172,7 @@ function showDialog(title,body){
   $('[data-panel-control=close]').onclick=()=>{environment?.releasePanel();dialog.close();};
   $('[data-panel-control=minimize]').onclick=()=>environment.minimizePanel(dialog,title);
   let savedStyle=null;$('[data-panel-control=zoom]').onclick=()=>{if(savedStyle!==null){dialog.style.cssText=savedStyle;savedStyle=null;}else{savedStyle=dialog.style.cssText;Object.assign(dialog.style,{margin:'0',left:'16px',top:'48px',width:`${innerWidth-32}px`,height:`${innerHeight-80}px`,maxWidth:'none',maxHeight:'none'});}};
-  dialog.showModal();$('#active-app').textContent='屏幕夹子';
+  dialog.showModal();environment?.showPanel(dialog,title);$('#active-app').textContent='屏幕夹子';
 }
 function bindDialogGeometry(){
   let state=null;
@@ -190,7 +190,7 @@ function bindDialogGeometry(){
     else{left=clamp(left+dx,8,Math.max(8,innerWidth-s.width-8));top=clamp(top+dy,44,Math.max(44,innerHeight-s.height-8));right=left+s.width;bottom=top+s.height;}
     Object.assign(dialog.style,{left:`${left}px`,top:`${top}px`,width:`${right-left}px`,height:`${bottom-top}px`});
   });
-  document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',()=>{finish();syncCapture();});window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
+  document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',()=>{finish();environment?.panelClosed(dialog);syncCapture();});window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
 }
 function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">还原演示桌面与文件</button><p class="reset-note">恢复初始示例，清除本地编辑与废纸篓内容。</p><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
 function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击或 Enter 打开；直接拖动桌面图标可以重新摆放，Esc 取消拖动，位置会在此浏览器保留。文字可以正常选择；按住 Option 可夹取标题、文件名和网页正文，选中一段文字则只夹这一段。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>信息输入框可输入，Enter 发送，Shift+Enter 换行；备忘录可以直接编辑，新文字也可按住 Option 夹取。信息会按内容回复文字、照片、影片或文档，可试着发“照片”“视频”“计划”或“代码”。Word 可编辑正文和格式，代码可直接修改，⌘S 保存并支持下载，刷新后恢复工作文件。图标可拖入废纸篓，⌘⌫ 移入，⌘Z 放回。刷新网页会找回所有桌面示例文件，保留编辑内容和 Dock 快捷入口；左上夹子菜单也可恢复桌面文件。访达支持搜索文件。Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助、开发者和应用信息面板也支持移动与缩放，黄色按钮以神奇效果收入 Dock，再点对应应用图标展开。文件可拖入 Dock 保留快捷入口，拖出可移除入口，原文件保留。左上角夹子 Logo 打开应用菜单。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
