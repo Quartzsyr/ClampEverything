@@ -1,4 +1,4 @@
-import { createDesktop } from './desktop.js?v=20261016-text';
+import { createDesktop } from './desktop.js?v=20261016-text-ready';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
 import { FileLibrary } from './file-library.js?v=20261016-text';
 import { HoldGesture } from './hold-gesture.js';

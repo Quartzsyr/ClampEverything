@@ -58,15 +58,21 @@ export function createDesktop({manifest,nativeURL,files,animated,canCapture,onCa
   }
   function openFinder(folder=false){finderFolder=folder;let record=windows.get('finder');if(record){$('.window-body',record.el).innerHTML=finderContents();record.title=finderFolder?'周末旅行':'桌面';$('.window-title',record.el).textContent=record.title;restoreWindow(record);return record;}return makeWindow('finder','finder',finderFolder?'周末旅行':'桌面',finderContents(),{width:590,height:440,sidebar:'<aside class="finder-sidebar"><small>个人收藏</small><button data-finder-root class="selected">▣　桌面</button><button data-folder-open>▰　周末旅行</button><span>⌄　下载</span><span>◷　最近使用</span></aside>'});}
   function fileFrame(item,src,label){const url=new URL(src);url.searchParams.set('v',item.fileId.slice(0,16));src=url.href;return `<div class="frame-source" ${sourceAttr(`viewer-${item.kind}`,item.kind,item)}><iframe src="${src}" title="${esc(label)}" data-file-id="${item.fileId}"></iframe><div class="file-capture-layer" aria-label="按住 Option 夹取${esc(item.title)}"></div></div>`;}
-  function bindFrames(el){for(const frame of $$('iframe',el))frame.addEventListener('load',()=>{
-    // HTML and Word previews are same-origin files. Forward only modifier/mouse
-    // state so holding Option inside the document also arms the outer clip.
-    try{const doc=frame.contentDocument;if(!doc)return;
+  function bindFrames(el){for(const frame of $$('iframe',el)){
+    const bound=new WeakSet();let lastDocument=null,tick;
+    const bindDocument=()=>{try{const doc=frame.contentDocument;if(!doc||doc.URL==='about:blank')return null;if(bound.has(doc))return doc;bound.add(doc);lastDocument=doc;
       for(const type of ['keydown','keyup'])doc.addEventListener(type,e=>window.dispatchEvent(new CustomEvent('clamp-modifier',{detail:{type,key:e.key,metaKey:e.metaKey,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey}})));
       doc.addEventListener('scroll',()=>window.dispatchEvent(new Event('clamp-frame-scroll')),true);
       doc.addEventListener('pointermove',e=>{const r=frame.getBoundingClientRect();document.dispatchEvent(new PointerEvent('pointermove',{clientX:r.x+e.clientX*Number(frame.dataset.scale||1),clientY:r.y+e.clientY*Number(frame.dataset.scale||1),bubbles:true}));});
-    }catch{/* A frame may already have been closed during its load event. */}
-  });}
+      doc.defaultView.addEventListener('pagehide',()=>waitForDocument(lastDocument));return doc;
+    }catch{/* Cross-origin documents retain ordinary browser behavior. */return null;}};
+    // Bind while the response is parsing, before images or release scripts
+    // finish loading. Also follow subsequent navigations and refreshes.
+    const waitForDocument=(previous=null)=>{cancelAnimationFrame(tick);const watch=()=>{if(!frame.isConnected)return;const doc=bindDocument();if(doc&&doc!==previous)return;tick=requestAnimationFrame(watch);};watch();};
+    frame.addEventListener('load',()=>{cancelAnimationFrame(tick);bindDocument();});
+    new MutationObserver(()=>waitForDocument(lastDocument)).observe(frame,{attributes:true,attributeFilter:['src']});
+    waitForDocument();
+  }}
   function openSafari(){const web=itemFor('web');return makeWindow('safari','safari','屏幕夹子 — 下载 Mac 版',`<div class="browser-toolbar"><button aria-label="后退" disabled>‹</button><button aria-label="前进" disabled>›</button><input class="address-bar" aria-label="网页地址" value="clamp.musefilm.top" spellcheck="false"><button data-reload-page aria-label="重新载入网页">↻</button><button data-open-original="web" aria-label="打开原网页">↗</button></div>${fileFrame(web,nativeURL(web.file),'屏幕夹子介绍与下载网页')}<div class="browser-status">quartzsyr.github.io/ClampEverything · 屏幕夹子</div>`,{width:620,height:590});}
   async function openNotes(item=itemFor('note')){let existing=windows.get('notes');if(existing){if(existing.item?.fileId===item.fileId){restoreWindow(existing);return existing;}await controlWindow(existing,'close');if(windows.has('notes'))return existing;}
     const text=item.textContent??await files.text(item),record=makeWindow('notes','notes',item.title,`<div class="notes-toolbar"><span>▤</span><span>☑</span><span>⊞</span></div><div class="notes-date">${new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric'}).format(new Date())}</div><div class="notes-page" ${sourceAttr('notes-paragraph','note',item)} role="textbox" contenteditable="true" aria-multiline="true" spellcheck="false" aria-label="备忘录正文">${textHTML(text)}</div>`,{width:410,height:430,sidebar:`<aside class="notes-sidebar"><strong>备忘录</strong><div class="note-list-item"><b>${esc(item.title)}</b><small>${esc(text.split('\n').find(line=>line.trim())||'空白便笺')}</small></div></aside>`});record.item=item;return record;
