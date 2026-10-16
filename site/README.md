@@ -97,3 +97,5 @@ HTML 原文件通过 `.html.bin` 二进制副本读取和校验，避免自定�
 `node tests/workspace.cjs` 验证多类回复、DOCX 格式与包内其他文件保留、代码编辑、编辑后立即夹取/下载、跨刷新恢复、废纸篓操作和真实影片播放。`ENGINE=webkit` 验证 Safari 内核。另用 macOS textutil 和 Quick Look 验证实际下载的 DOCX 可解析和渲染。
 
 新增第三方：`assets/vendor/jszip/` 随包附带 JSZip MIT 与 Pako MIT 许可证，不依赖外部 CDN。JSZip API：[读取现有 ZIP](https://stuk.github.io/jszip/documentation/api_jszip/load_async.html)、[写回 ZIP](https://stuk.github.io/jszip/documentation/api_jszip/generate_async.html)。
+
+旧版本的 photo/video/group PNG 地址暂时保留，供已打开的旧页面继续夹取；当前 manifest 使用更新后的摄影素材与 WebP 预览。
