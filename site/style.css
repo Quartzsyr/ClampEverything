@@ -372,3 +372,17 @@ body:not(.capture-on) [data-source]{touch-action:auto}
 .file-inspector>button{font-size:10px;color:#79906e}.file-hex{font:12px/1.6 ui-monospace,monospace;color:#697860;user-select:text}
 .file-inspector:has(.archive-entries){justify-content:flex-start;overflow:auto}.file-inspector:has(.archive-entries)>img{height:70px;flex-shrink:0}
 .release-links{display:flex;gap:20px;flex-wrap:wrap;font-size:11px}.release-links a{text-decoration:underline;text-underline-offset:3px}.release-signing{font-size:10px;color:#87917f}
+.window-titlebar,.dialog-head{cursor:grab;touch-action:none}.interacting .window-titlebar,.interacting .dialog-head{cursor:grabbing}.interacting iframe{pointer-events:none}.interacting{user-select:none}
+.window-edge{position:absolute;z-index:12;touch-action:none}
+[data-resize=n],[data-panel-resize=n]{top:0;left:14px;right:14px;height:6px;cursor:ns-resize}
+[data-resize=s],[data-panel-resize=s]{bottom:0;left:14px;right:14px;height:6px;cursor:ns-resize}
+[data-resize=e],[data-panel-resize=e]{right:0;top:14px;bottom:14px;width:6px;cursor:ew-resize}
+[data-resize=w],[data-panel-resize=w]{left:0;top:14px;bottom:14px;width:6px;cursor:ew-resize}
+[data-resize=ne],[data-panel-resize=ne]{right:0;top:0;width:14px;height:14px;cursor:nesw-resize}
+[data-resize=nw],[data-panel-resize=nw]{left:0;top:0;width:14px;height:14px;cursor:nwse-resize}
+[data-resize=se],[data-panel-resize=se]{right:0;bottom:0;width:17px;height:17px;cursor:nwse-resize}
+[data-resize=sw],[data-panel-resize=sw]{left:0;bottom:0;width:14px;height:14px;cursor:nesw-resize}
+dialog[open]{display:flex;flex-direction:column;overflow:hidden;max-width:calc(100vw - 16px);max-height:calc(100dvh - 60px)}
+#dialog-content{display:flex;flex-direction:column;min-height:0;flex:1;width:100%}.dialog-head{flex:none}.dialog-body{min-height:0}
+@media(max-width:700px){.menu-left>button[data-action=edit],.menu-left>button[data-action=windows]{display:none}}
+[data-panel-resize=se]:after{content:"";position:absolute;bottom:5px;right:5px;width:6px;height:6px;border-right:1px solid #8c988570;border-bottom:1px solid #8c988570}

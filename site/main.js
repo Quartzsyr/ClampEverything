@@ -150,11 +150,30 @@ async function copyItem(item){
   status('已复制',item.title);
 }
 function showAbout(){showDialog('屏幕夹子',`<div class="about-app"><img src="./assets/app-icon.webp" alt=""><div><h2>把灵感，夹在手边。</h2><p>文字、照片、文稿与文件，随手夹住，留在眼前。</p></div></div><a class="download" href="https://github.com/Quartzsyr/ClampEverything/releases/download/v1.7.16/ClampEverything-1.7.16-arm64.dmg">下载 Mac 版 · v1.7.16 ↓</a><p>Apple Silicon · macOS 14+ · 13.9 MiB</p><p class="release-links"><a href="https://github.com/Quartzsyr/ClampEverything/releases/tag/v1.7.16" target="_blank" rel="noopener">详细更新说明 ↗</a><a href="https://github.com/Quartzsyr/ClampEverything/releases/download/v1.7.16/ClampEverything-1.7.16-arm64.dmg.sha256">SHA-256 校验</a></p><p class="release-signing">开发签名，尚未经过 Apple 公证。</p><div class="developer"><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);}
-function showDialog(title,body){stopDemo(false);$('#dialog-content').innerHTML=`<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button aria-label="关闭">×</button></div><div class="dialog-body">${body}</div>`;$('.dialog-head button').onclick=()=>dialog.close();dialog.showModal();}
+function showDialog(title,body){stopDemo(false);dialog.removeAttribute('style');$('#dialog-content').innerHTML=`<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button aria-label="关闭">×</button></div><div class="dialog-body">${body}</div>${['n','e','s','w','ne','nw','se','sw'].map(edge=>`<div class="window-edge" data-panel-resize="${edge}" aria-label="调整面板大小"></div>`).join('')}`;$('.dialog-head button').onclick=()=>dialog.close();dialog.showModal();}
+function bindDialogGeometry(){
+  let state=null;
+  const finish=()=>{state=null;dialog.classList.remove('interacting');};
+  dialog.addEventListener('pointerdown',event=>{
+    if(event.button!==0||event.target.closest('button,a,input'))return;
+    const header=event.target.closest('.dialog-head'),edge=event.target.closest('[data-panel-resize]');if(!header&&!edge)return;
+    event.preventDefault();const r=dialog.getBoundingClientRect();state={pointer:event.pointerId,x:event.clientX,y:event.clientY,left:r.x,top:r.y,width:r.width,height:r.height,edge:edge?.dataset.panelResize};
+    Object.assign(dialog.style,{margin:'0',left:`${r.x}px`,top:`${r.y}px`,width:`${r.width}px`,height:`${r.height}px`});dialog.classList.add('interacting');(header||edge).setPointerCapture(event.pointerId);
+  });
+  document.addEventListener('pointermove',event=>{
+    if(!state||state.pointer!==event.pointerId)return;const s=state,dx=event.clientX-s.x,dy=event.clientY-s.y;
+    let left=s.left,top=s.top,right=s.left+s.width,bottom=s.top+s.height;
+    if(s.edge){const minW=Math.min(300,innerWidth-24),minH=Math.min(230,innerHeight-70);if(s.edge.includes('e'))right=clamp(right+dx,left+minW,innerWidth-8);if(s.edge.includes('w'))left=clamp(left+dx,8,right-minW);if(s.edge.includes('s'))bottom=clamp(bottom+dy,top+minH,innerHeight-8);if(s.edge.includes('n'))top=clamp(top+dy,44,bottom-minH);}
+    else{left=clamp(left+dx,8,Math.max(8,innerWidth-s.width-8));top=clamp(top+dy,44,Math.max(44,innerHeight-s.height-8));right=left+s.width;bottom=top+s.height;}
+    Object.assign(dialog.style,{left:`${left}px`,top:`${top}px`,width:`${right-left}px`,height:`${bottom-top}px`});
+  });
+  document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',finish);window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
+}
 function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">重新整理演示桌面</button><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
-function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击打开；文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>Dock 打开应用；窗口可以移动、关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
+function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击打开；文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
 function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();environment?.reset();}
 function bind(){
+  bindDialogGeometry();
   document.addEventListener('click',event=>{if(event.altKey||gesture.active||manual)return;const action=event.target.closest('[data-action]')?.dataset.action;
     if(action==='about')showAbout();if(action==='settings')showSettings();if(action==='help')showHelp();if(action==='finder')environment.openFinder();if(action==='edit')environment.pasteFile();if(action==='windows')environment.showWindowMenu();});
   document.addEventListener('pointermove',event=>{hasPointer=true;point.x=event.clientX;point.y=event.clientY;moveDrag(event);if(dialog.open){cursor.hidden=true;return;}if(manual?.ready)cursorAt(event.clientX,event.clientY,'closed');else if(!manual)cursorAt(event.clientX,event.clientY);});

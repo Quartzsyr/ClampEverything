@@ -60,7 +60,7 @@ import ClampCore
         try await Task.sleep(nanoseconds: 300_000_000)
         store.addTextOrLink("http://127.0.0.1:18764/field-notes.html")
         let webID = store.active.last!.id
-        store.update(webID) { $0.title = "田野手记 · 网页首屏" }
+        store.update(webID) { $0.title = "屏幕夹子 · 下载 Mac 版" }
         ids.append(("web", webID, fixtures["web"]!.lastPathComponent))
         // The native material group uses real members, without changing their standalone fixtures.
         var group = ClipGroup(title: "这次旅行的材料")
@@ -200,7 +200,7 @@ import ClampCore
         defer { manager.shutdown(); try? FileManager.default.removeItem(at: temporary) }
         store.addTextOrLink(url.absoluteString)
         let id = store.active.last!.id
-        store.update(id) { $0.title = "田野手记 · 网页首屏" }
+        store.update(id) { $0.title = "屏幕夹子 · 下载 Mac 版" }
         let size = CGSize(width: 320, height: 238)
         let model = CardModel(id: id, manager: manager)
         model.expanded = true; model.revealProgress = 1; model.sheetSize = size; model.sticky = true
@@ -255,7 +255,9 @@ import ClampCore
         try writeImage(examples.photo, to: result["photo"]!)
         try Data(GuideExamples.note.utf8).write(to: result["note"]!)
         try Data(GuideExamples.code.utf8).write(to: result["code"]!)
-        try Data(GuideExamples.html.utf8).write(to: result["web"]!)
+        if !FileManager.default.fileExists(atPath: result["web"]!.path) {
+            try Data(GuideExamples.html.utf8).write(to: result["web"]!)
+        }
         try Data([0x43, 0x4c, 0x41, 0x4d, 0x50, 0x00, 0x01, 0x00]).write(to: result["file"]!)
         let pdf = PDFDocument()
         for index in 0..<3 {
