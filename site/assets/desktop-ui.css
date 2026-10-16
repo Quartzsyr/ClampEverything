@@ -75,3 +75,12 @@ body:has(#app-dock:hover) .demo-status,body:has(#app-dock :focus-visible) .demo-
 #target-glow{z-index:195}.dock-insertion-slot{display:none;flex:none;width:var(--dock-slot);height:42px;margin-bottom:7px;border:1px dashed #b9ccac;border-radius:10px;background:#ecf4e44d}.dock-drop-ready .dock-insertion-slot{display:block}
 
 .window-genie canvas{filter:drop-shadow(0 8px 10px #34433524)}
+
+/* A compact, editable sheet keeps the lower-left Notes window quiet. */
+.app-notes{container-type:inline-size}
+@container (max-width:450px){
+ .notes-sidebar{display:none}
+ .notes-toolbar{padding:8px 17px;font-size:16px}
+ .notes-date{margin-top:9px}
+ .notes-page{padding:12px 22px;font-size:12px;line-height:21px}
+}

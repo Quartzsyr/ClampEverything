@@ -23,8 +23,8 @@ const assert=require('node:assert/strict');
   await page.setViewportSize({width:1440,height:1000});await page.waitForTimeout(250);
   // Place an actual file on a free desktop position; a drag must not open it.
   const icon=page.locator('[data-source=desktop-photo]'),r=await icon.boundingBox();
-  await page.mouse.move(r.x+45,r.y+30);await page.mouse.down();await page.mouse.move(1100,710,{steps:8});await page.mouse.up();
-  const after=await icon.boundingBox();assert.ok(Math.abs(after.x-(1100-45))<2);assert.equal(await page.locator('.desktop-drag-ghost').count(),0);assert.equal(await page.locator('.app-photos').count(),0);
+  await page.mouse.move(r.x+45,r.y+30);await page.mouse.down();await page.mouse.move(600,800,{steps:8});await page.mouse.up();
+  const after=await icon.boundingBox();assert.ok(Math.abs(after.x-(600-45))<2);assert.equal(await page.locator('.desktop-drag-ghost').count(),0);assert.equal(await page.locator('.app-photos').count(),0);
   await page.reload();await icon.waitFor();const saved=await icon.boundingBox();assert.ok(Math.abs(after.x-saved.x)<2&&Math.abs(after.y-saved.y)<2,'icon positions survive reload');
   await icon.dblclick();await page.locator('.app-photos').waitFor();
   const image=page.locator('[data-source=photo-open] img');await image.hover();await page.keyboard.down('Alt');await page.waitForTimeout(340);assert.equal(await page.locator('#target-glow').getAttribute('data-style'),'image');assert.equal(await page.locator('#target-glow rect').count(),1);await page.keyboard.up('Alt');await page.locator('.app-photos [data-window-control=close]').click();
