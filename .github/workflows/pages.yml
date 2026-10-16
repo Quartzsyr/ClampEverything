@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Derive previews and catalog from original files
+        run: python3 site/scripts/prepare-files.py
       - name: Check JavaScript
         working-directory: site
         run: npm run check
@@ -31,7 +33,7 @@ jobs:
       - name: Package public files only
         run: |
           mkdir -p _site
-          cp site/index.html site/style.css site/main.js site/desktop.js site/motion.js site/hold-gesture.js site/.nojekyll site/robots.txt site/sitemap.xml _site/
+          cp site/index.html site/style.css site/main.js site/desktop.js site/motion.js site/hold-gesture.js site/file-library.js site/pdf-view.js site/.nojekyll site/robots.txt site/sitemap.xml _site/
           cp -R site/assets _site/assets
       - uses: actions/upload-pages-artifact@v4
         with:

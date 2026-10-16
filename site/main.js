@@ -1,5 +1,6 @@
 import { createDesktop } from './desktop.js';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
+import { FileLibrary } from './file-library.js';
 import { HoldGesture } from './hold-gesture.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -10,6 +11,7 @@ const nativeURL = path => new URL(path, nativeBase).href;
 const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
+const files = new FileLibrary(nativeURL);
 const labels = {photo:'照片',note:'便笺',document:'PDF',word:'Word',folder:'文件夹',web:'网页',code:'代码',audio:'音频',video:'视频',archive:'压缩包',file:'其他文件',group:'收纳夹'};
 let manifest, environment, sequence=0, run=0, z=5, dragging=null, manual=null;
 let motion = !reduced.matches;
@@ -50,7 +52,7 @@ function render(obj) {
   if(pages){Object.assign(pages.style,{left:`${-hookX(obj)+10}px`,top:`${obj.item.height-6}px`});$('span',pages).textContent=`${obj.page+1} / ${obj.item.pages.length}`;$('[data-page="-1"]',pages).disabled=obj.page===0;$('[data-page="1"]',pages).disabled=obj.page===obj.item.pages.length-1;}
 }
 function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=false,page=0}={}) {
-  const id=++sequence;const el=document.createElement('article');el.className=`native-object ${initial?'initial-object':''}`;el.setAttribute('aria-label',item.title);el.dataset.fileKind=item.kind;
+  const id=++sequence;const el=document.createElement('article');el.className=`native-object ${initial?'initial-object':''}`;el.setAttribute('aria-label',item.title);el.dataset.fileKind=item.kind;el.dataset.fileId=item.fileId;
   el.innerHTML=`<span class="nail" aria-hidden="true"></span><div class="assembly"><button class="native-state expanded-state" aria-label="${escapeHTML(item.title)}，原生预览"><img alt="${escapeHTML(item.title)}的桌面端实际夹取样式" draggable="false"></button><button class="native-state compact-state" aria-label="展开${escapeHTML(item.title)}"><img alt="桌面端真实收起状态" draggable="false"></button><button class="move-grip" aria-label="拖动夹子移动，点击收放" title="拖动夹子移动 · 点击收放"></button></div><span class="object-name"></span>${item.pages?.length>1?'<div class="page-controls"><button data-page="-1" aria-label="上一页">‹</button><span></span><button data-page="1" aria-label="下一页">›</button></div>':''}`;
   const obj={id,item,x,y,side,compact,docked,page,sticky:!compact,el,expandedButton:$('.expanded-state',el),compactButton:$('.compact-state',el),busy:false};
   objects.set(id,obj);$('#objects').append(el);render(obj);
@@ -61,7 +63,7 @@ function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=fals
   });
   obj.compactButton.addEventListener('click',()=>setExpanded(obj,true));
   obj.expandedButton.addEventListener('click',()=>{if(!obj.busy)copyItem(obj.item);});
-  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}event.dataTransfer.effectAllowed='copy';event.dataTransfer.setData('application/x-clamp-file',JSON.stringify({kind:obj.item.kind}));event.dataTransfer.setData('text/uri-list',nativeURL(obj.item.file));event.dataTransfer.setData('text/plain',obj.item.title);});
+  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}files.writeDrag(event.dataTransfer,obj.item);});
   for(const surface of [obj.compactButton,obj.expandedButton,grip]){
     surface.addEventListener('pointerenter',()=>{clearTimeout(obj.leaveTimer);if(obj.compact&&!dragging&&!manual){clearTimeout(obj.hoverTimer);obj.hoverTimer=setTimeout(()=>setExpanded(obj,true,true),350);}});
     surface.addEventListener('pointerleave',()=>{clearTimeout(obj.hoverTimer);if(!obj.sticky&&!dragging){obj.leaveTimer=setTimeout(()=>setExpanded(obj,false),450);}});
@@ -96,8 +98,33 @@ function endDrag(){
   const side=d.lastX<42?'left':d.lastX>innerWidth-42?'right':null;d.obj.docked=!!side;
   if(side){d.obj.side=side;d.obj.x=side==='left'?44:innerWidth-44;render(d.obj);setExpanded(d.obj,false);}else render(d.obj);
 }
-function cursorAt(x,y,pose='open'){if(!hasPointer&&!manual){cursor.hidden=true;return;}cursor.hidden=false;cursor.style.transform=`translate(${x-8}px,${y-26}px)`;$('.metal',cursor).src=nativeURL(manifest.cursor?.[pose]||`cursor-${pose}.png`);}
-function stopDemo(announce=true){document.body.classList.add('capture-on');run++;gesture.cancel();if(manual){manual.source?.element.classList.remove('aiming','being-clamped');manual=null;gesture.unhold();}cursor.hidden=dialog.open;cursor.classList.remove('holding');if(!dialog.open)cursorAt(point.x,point.y);environment?.clearAim();$('#flight-layer').replaceChildren();if(announce)status('已取消夹取','按住文件拖动，松手放置');}
+function cursorAt(x,y,pose='open'){
+  if(dialog.open||(!gesture.active&&!manual)||(!hasPointer&&!manual)){cursor.hidden=true;return;}
+  cursor.hidden=false;cursor.style.transform=`translate(${x-8}px,${y-26}px)`;$('.metal',cursor).src=nativeURL(manifest.cursor?.[pose]||`cursor-${pose}.png`);
+}
+function syncCapture(){
+  document.body.classList.toggle('capture-on',!dialog.open&&(gesture.active||!!manual));
+  if(!gesture.active)environment?.clearAim();
+  else environment?.aimAt(point.x,point.y);
+  cursorAt(point.x,point.y,manual?.ready?'closed':'open');
+}
+function stopDemo(announce=true){
+  run++;gesture.cancel();if(manual){manual.source?.element.classList.remove('aiming','being-clamped');manual=null;}
+  cursor.classList.remove('holding');environment?.clearAim();$('#flight-layer').replaceChildren();syncCapture();
+  if(announce)status('已取消夹取','松开 Option，再按住即可重新夹取');
+}
+function modifierDown(event){
+  if(event.key==='Alt'&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!dialog.open){event.preventDefault?.();gesture.hold();syncCapture();}
+  else if(event.key==='Escape'&&(manual||gesture.active))stopDemo();
+  else if(gesture.held&&event.key!=='Alt')stopDemo(false);
+}
+function modifierUp(event){
+  if(event.key!=='Alt')return;event.preventDefault?.();
+  // Mouse-up commits the drop. Releasing Option during its settling animation
+  // must not cancel that completed gesture; releasing it earlier does cancel.
+  if(manual&&!manual.released)stopDemo(false);
+  gesture.unhold();syncCapture();
+}
 async function grasp(item,source,to,token){
   const rect=source.visual.getBoundingClientRect(),image=new Image();image.src=sourceURL(item);image.className='flight-item';$('#flight-layer').append(image);const start=performance.now();
   return new Promise(resolve=>{function frame(now){
@@ -108,8 +135,8 @@ async function grasp(item,source,to,token){
   }requestAnimationFrame(frame);});
 }
 function beginCapture(event,source){
-  if(event.button!==0)return;if(manual)stopDemo(false);
-  event.preventDefault();gesture.unhold();gesture.hold();gesture.press();run++;const token=run;
+  if(event.button!==0||manual||!gesture.press())return;
+  event.preventDefault();run++;const token=run;
   hasPointer=true;point.x=event.clientX;point.y=event.clientY;
   manual={item:source.item,source,token,start:{x:event.clientX,y:event.clientY},ready:false,released:false};
   source.element.classList.add('aiming','being-clamped');source.element.setPointerCapture(event.pointerId);
@@ -117,25 +144,26 @@ function beginCapture(event,source){
 }
 async function copyItem(item){
   environment.clipboard=item;
-  try{if(item.kind==='note'||item.kind==='code'){const response=await fetch(nativeURL(item.file));await navigator.clipboard?.writeText(await response.text());}
-  else if(item.kind==='photo'&&window.ClipboardItem){const response=await fetch(nativeURL(item.file)),blob=await response.blob();await navigator.clipboard?.write([new ClipboardItem({'image/png':blob})]);}}
+  try{if(item.kind==='note'||item.kind==='code'){await navigator.clipboard?.writeText(await files.text(item));}
+  else if(item.kind==='photo'&&window.ClipboardItem){await navigator.clipboard?.write([new ClipboardItem({'image/png':files.get(item).file})]);}}
   catch{/* Browser file clipboard remains available to the desktop apps. */}
   status('已复制',item.title);
 }
 function showAbout(){showDialog('屏幕夹子',`<div class="about-app"><img src="./assets/app-icon.webp" alt=""><div><h2>把灵感，夹在手边。</h2><p>文字、照片、文稿与文件，随手夹住，留在眼前。</p></div></div><a class="download" href="https://github.com/Quartzsyr/ClampEverything/releases/latest">下载 Mac 版 ↗</a><p>Apple Silicon · macOS 14+ · 开源免费</p><div class="developer"><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);}
 function showDialog(title,body){stopDemo(false);$('#dialog-content').innerHTML=`<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button aria-label="关闭">×</button></div><div class="dialog-body">${body}</div>`;$('.dialog-head button').onclick=()=>dialog.close();dialog.showModal();}
 function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">重新整理演示桌面</button><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
-function showHelp(){showDialog('就在桌面上，随手夹取',`<p>鼠标就是夹子。直接点击聊天里的文字、收到的图片，或桌面上的 PDF、视频和其他文件，就能夹住；也可以按住拖动，松手放置。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>Dock 打开应用；窗口可以移动、关闭、最小化和缩放。文件右键可打开或快速查看。</p>`);}
+function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击打开；文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>Dock 打开应用；窗口可以移动、关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
 function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();environment?.reset();}
 function bind(){
-  document.addEventListener('click',event=>{const action=event.target.closest('[data-action]')?.dataset.action;
+  document.addEventListener('click',event=>{if(event.altKey||gesture.active||manual)return;const action=event.target.closest('[data-action]')?.dataset.action;
     if(action==='about')showAbout();if(action==='settings')showSettings();if(action==='help')showHelp();if(action==='finder')environment.openFinder();if(action==='edit')environment.pasteFile();if(action==='windows')environment.showWindowMenu();});
   document.addEventListener('pointermove',event=>{hasPointer=true;point.x=event.clientX;point.y=event.clientY;moveDrag(event);if(dialog.open){cursor.hidden=true;return;}if(manual?.ready)cursorAt(event.clientX,event.clientY,'closed');else if(!manual)cursorAt(event.clientX,event.clientY);});
   document.addEventListener('pointerup',event=>{endDrag();if(manual&&gesture.release()){manual.released=true;manual.destination={x:event.clientX,y:event.clientY};if(manual.ready)finishManual();}});
-  document.addEventListener('pointercancel',()=>{dragging=null;stopDemo(false);gesture.unhold();});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&manual)stopDemo();});
-  document.addEventListener('contextmenu',event=>{if(manual||gesture.active){event.preventDefault();stopDemo();}});
-  window.addEventListener('blur',()=>{if(manual||gesture.active){stopDemo(false);gesture.unhold();}});
+  document.addEventListener('pointercancel',()=>{dragging=null;stopDemo(false);gesture.unhold();syncCapture();});
+  document.addEventListener('keydown',modifierDown);document.addEventListener('keyup',modifierUp);
+  window.addEventListener('clamp-modifier',event=>{(event.detail.type==='keydown'?modifierDown:modifierUp)(event.detail);});
+  document.addEventListener('contextmenu',event=>{if(manual||gesture.active){event.preventDefault();stopDemo();event.stopImmediatePropagation();}},true);
+  window.addEventListener('blur',()=>{if(manual||gesture.held){stopDemo(false);gesture.unhold();syncCapture();}});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
   const dock=$('#app-dock');dock.addEventListener('pointermove',event=>{if(!animated())return;$$('[data-app]',dock).forEach(button=>{const rect=button.getBoundingClientRect(),distance=Math.abs(event.clientX-rect.x-rect.width/2),scale=1+.38*Math.exp(-.5*(distance/58)**2);button.style.setProperty('--dock-scale',scale.toFixed(3));button.style.setProperty('--dock-lift',`${((scale-1)*22).toFixed(2)}px`);});});dock.addEventListener('pointerleave',()=>{$$('[data-app]',dock).forEach(button=>{button.style.setProperty('--dock-scale',1);button.style.setProperty('--dock-lift','0px');});});
   document.documentElement.addEventListener('pointerleave',()=>{cursor.hidden=true;});
@@ -148,12 +176,12 @@ function finishManual(){
   const x=edge?(edge==='left'?44:innerWidth-44):clamp(destination.x,hook+5,innerWidth-current.item.width+hook-5);
   const desktopTop=$('#desktop').getBoundingClientRect().top;
   const obj=makeObject(current.item,{x,y:clamp(destination.y-desktopTop,26,Math.max(26,innerHeight-desktopTop-(current.item.height-26)-150)),side,compact:!!edge,docked:!!edge});
-  obj.el.style.zIndex=++z;current.source.element.classList.remove('aiming','being-clamped');manual=null;gesture.cancel();cursorAt(destination.x,destination.y);cursor.classList.remove('holding');status('已夹住',current.item.title);
+  obj.el.style.zIndex=++z;current.source.element.classList.remove('aiming','being-clamped');manual=null;gesture.cancel();syncCapture();cursor.classList.remove('holding');status('已夹住',current.item.title);
 }
 async function init(){
-  document.body.classList.add('load-pending','capture-on');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();
-  environment=createDesktop({manifest,nativeURL,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
-  bind();await environment.mount();document.body.classList.remove('load-pending');status('鼠标就是夹子','直接夹文字、图片或桌面文件；按住拖动，松手放下');
+  document.body.classList.add('load-pending');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();await files.load(manifest.items);
+  environment=createDesktop({manifest,nativeURL,files,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
+  bind();await environment.mount();document.body.classList.remove('load-pending');status('按住 ⌥ Option，随手夹取','普通鼠标单击选择、双击打开；按住 Option 夹取，松开鼠标放置');
 }
 function updateClock(){$('#clock').textContent=new Intl.DateTimeFormat('zh-CN',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}updateClock();setInterval(updateClock,30000);
 init().catch(error=>{document.body.classList.remove('load-pending');status('原生演示素材加载失败','请刷新页面重试');console.error(error);});
