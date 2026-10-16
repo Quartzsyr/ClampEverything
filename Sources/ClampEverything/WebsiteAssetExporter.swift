@@ -24,6 +24,14 @@ import ClampCore
         var pages: [[String: String]]?
     }
     static func export(to output: URL) async throws {
+        if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_MEDIA_ONLY"] == "1" {
+            try await exportMedia(to: output)
+            return
+        }
+        if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_EDITOR_STOCK"] == "1" {
+            try await exportEditorStock(to: output)
+            return
+        }
         if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_BLANK_NOTE"] == "1" {
             try await exportBlankNote(to: output)
             return
@@ -178,6 +186,72 @@ import ClampCore
         try encoder.encode(Manifest(padding: padding, pngPixelScale: NSScreen.main?.backingScaleFactor ?? 2, items: entries)).write(to: output.appendingPathComponent("manifest.json"), options: .atomic)
         try await exportWebOnly(to: output)
     }
+    private static func exportMedia(to output: URL) async throws {
+        let files = output.deletingLastPathComponent().appendingPathComponent("files", isDirectory: true)
+        let frame = output.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("media-source/lake-film.jpg")
+        guard let image = NSImage(contentsOf: frame) else { throw LibraryError.unsafeAsset }
+        try await makeVideo(image: image, to: files.appendingPathComponent("湖边的风.mov"), moving: true)
+        let folder = files.appendingPathComponent("周末旅行", isDirectory: true)
+        let photoCopy = folder.appendingPathComponent("山间湖泊.png")
+        try? FileManager.default.removeItem(at: photoCopy)
+        try FileManager.default.copyItem(at: files.appendingPathComponent("山间湖泊.png"), to: photoCopy)
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("ClampMedia-" + UUID().uuidString)
+        let store = ClipStore(root: temporary); store.hidden = true
+        store.state.preferences.motionIntensity = 0
+        let manager = WindowManager(store: store)
+        defer { manager.shutdown(); try? FileManager.default.removeItem(at: temporary) }
+        var ids: [String: UUID] = [:]
+        for (kind, name) in [("photo", "山间湖泊.png"), ("video", "湖边的风.mov"), ("folder", "周末旅行"), ("document", "旅行手记.pdf")] {
+            store.importFiles([files.appendingPathComponent(name)])
+            ids[kind] = store.active.last!.id
+        }
+        store.addTextOrLink(GuideExamples.note); ids["note"] = store.active.last!.id
+        var group = ClipGroup(title: "这次旅行的材料")
+        group.id = UUID(uuidString: "C1A00000-0000-4000-8000-000000000012")!
+        store.state.groups.append(group); ids["group"] = group.id
+        for kind in ["photo", "document", "note"] {
+            if let id = ids[kind], let original = store.item(id) { var member = original; member.id = UUID(); member.groupID = group.id; store.state.items.append(member) }
+        }
+        for item in store.active { store.loadThumbnail(item) }
+        try await Task.sleep(nanoseconds: 800_000_000)
+        let sizes = ["photo": CGSize(width: 320, height: 238), "video": CGSize(width: 312, height: 221), "folder": CGSize(width: 320, height: 420), "group": CGSize(width: 320, height: 420)]
+        for kind in ["photo", "video", "folder", "group"] {
+            let id = ids[kind]!, size = sizes[kind]!, model = CardModel(id: ids[kind]!, manager: manager)
+            model.expanded = true; model.revealProgress = 1; model.sheetSize = size; model.sticky = true
+            for side in [ClipSide.left, .right] {
+                setSide(side, id: id, store: store)
+                try await snapshot(CardSurface(store: store, model: model, manager: manager, showsNail: false), size: size, to: output.appendingPathComponent("\(kind)-\(side.rawValue).png"), wait: 0.3)
+            }
+            model.expanded = false; model.revealProgress = 0; model.sheetSize = DockGeometry.compactSize
+            for side in [ClipSide.left, .right] {
+                setSide(side, id: id, store: store)
+                try await snapshot(CardSurface(store: store, model: model, manager: manager, showsNail: false), size: DockGeometry.compactSize, to: output.appendingPathComponent("\(kind)-compact-\(side.rawValue).png"), wait: 0.2)
+            }
+            if let image = store.images[id] { try writeImage(image, to: output.appendingPathComponent("\(kind)-source.png")) }
+            else if kind == "group" { try await snapshot(GroupBody(store: store, groupID: id, manager: manager, interaction: { _ in }).environment(\.colorScheme, .light), size: CGSize(width: size.width - 24, height: size.height - 53), to: output.appendingPathComponent("group-source.png"), wait: 0.3, margin: 0) }
+        }
+    }
+    private static func exportEditorStock(to output: URL) async throws {
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("ClampEditorStock-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+        let store = ClipStore(root: temporary.appendingPathComponent("Library")); store.hidden = true
+        store.state.preferences.motionIntensity = 0
+        let manager = WindowManager(store: store)
+        defer { manager.shutdown(); try? FileManager.default.removeItem(at: temporary) }
+        for (kind, name, size) in [("code", "Blank.swift", CGSize(width: 320, height: 273)), ("word", "Blank.docx", CGSize(width: 216, height: 309))] {
+            let url = temporary.appendingPathComponent(name)
+            if kind == "word" { try NSAttributedString(string: "\n").data(from: NSRange(location: 0, length: 1), documentAttributes: [.documentType: NSAttributedString.DocumentType.officeOpenXML]).write(to: url) }
+            else { try Data().write(to: url) }
+            store.importFiles([url]); let id = store.active.last!.id
+            let blank = NSImage(size: CGSize(width: size.width - 24, height: size.height - 53))
+            blank.lockFocus(); NSColor.clear.setFill(); NSRect(origin: .zero, size: blank.size).fill(); blank.unlockFocus()
+            let model = CardModel(id: id, manager: manager); model.expanded = true; model.revealProgress = 1; model.sheetSize = size; model.sticky = true
+            for side in [ClipSide.left, .right] {
+                setSide(side, id: id, store: store)
+                try await snapshot(CardSurface(store: store, model: model, manager: manager, showsNail: false, exportWebSnapshot: kind == "code" ? blank : nil), size: size, to: output.appendingPathComponent("\(kind)-blank-\(side.rawValue).png"), wait: 0.4)
+            }
+        }
+    }
     /// Empty stock for browser-edited text; keeps the shipping clip and paper.
     private static func exportBlankNote(to output: URL) async throws {
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("ClampBlankNote-" + UUID().uuidString)
@@ -277,7 +351,9 @@ import ClampCore
                      "note": "周末的小计划.txt", "web": "field-notes.html", "audio": "午后的录音.wav", "video": "湖边的风.mov",
                      "archive": "旅行资料.zip", "file": "相机配置.dat", "folder": "周末旅行"]
         let result = names.mapValues { files.appendingPathComponent($0) }
-        try writeImage(examples.photo, to: result["photo"]!)
+        if !FileManager.default.fileExists(atPath: result["photo"]!.path) {
+            try writeImage(examples.photo, to: result["photo"]!)
+        }
         try Data(GuideExamples.note.utf8).write(to: result["note"]!)
         try Data(GuideExamples.code.utf8).write(to: result["code"]!)
         if !FileManager.default.fileExists(atPath: result["web"]!.path) {
@@ -316,7 +392,9 @@ import ClampCore
         }
         try FileManager.default.createDirectory(at: folder.appendingPathComponent("路线与参考"), withIntermediateDirectories: true)
         try makeWave(to: result["audio"]!)
-        try await makeVideo(image: examples.photo, to: result["video"]!)
+        if !FileManager.default.fileExists(atPath: result["video"]!.path) {
+            try await makeVideo(image: NSImage(contentsOf: result["photo"]!) ?? examples.photo, to: result["video"]!)
+        }
         let zip = Process(); zip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
         zip.arguments = ["-c", "-k", "--keepParent", folder.path, result["archive"]!.path]
         try zip.run(); zip.waitUntilExit()
@@ -336,24 +414,29 @@ import ClampCore
         for i in 0..<count { let fade = min(1, Double(i) / 2205) * min(1, Double(count - i) / 4410); u16(UInt16(bitPattern: Int16(sin(Double(i) * 2 * .pi * 220 / 22050) * 2500 * fade))) }
         try data.write(to: url, options: .atomic)
     }
-    private static func makeVideo(image: NSImage, to url: URL) async throws {
+    private static func makeVideo(image: NSImage, to url: URL, moving: Bool = false) async throws {
         try? FileManager.default.removeItem(at: url)
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
-        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 800, AVVideoHeightKey: 500])
-        let adapter = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB, kCVPixelBufferWidthKey as String: 800, kCVPixelBufferHeightKey as String: 500])
+        let width = moving ? 960 : 800, height = moving ? 540 : 500
+        var settings: [String: Any] = [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: width, AVVideoHeightKey: height]
+        if moving { settings[AVVideoCompressionPropertiesKey] = [AVVideoAverageBitRateKey: 900_000, AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel] }
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        let adapter = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB, kCVPixelBufferWidthKey as String: width, kCVPixelBufferHeightKey as String: height])
         writer.add(input); writer.startWriting(); writer.startSession(atSourceTime: .zero)
         guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { throw LibraryError.unsafeAsset }
-        for index in 0..<30 {
+        let count = moving ? 144 : 30
+        for index in 0..<count {
             while !input.isReadyForMoreMediaData { try await Task.sleep(nanoseconds: 10_000_000) }
             var pixel: CVPixelBuffer?
-            CVPixelBufferCreate(kCFAllocatorDefault, 800, 500, kCVPixelFormatType_32ARGB, [kCVPixelBufferCGImageCompatibilityKey: true, kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary, &pixel)
+            CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32ARGB, [kCVPixelBufferCGImageCompatibilityKey: true, kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary, &pixel)
             guard let pixel else { throw LibraryError.unsafeAsset }
             CVPixelBufferLockBaseAddress(pixel, [])
-            if let context = CGContext(data: CVPixelBufferGetBaseAddress(pixel), width: 800, height: 500, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixel), space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) {
-                context.draw(cg, in: CGRect(x: 0, y: 0, width: 800, height: 500))
+            if let context = CGContext(data: CVPixelBufferGetBaseAddress(pixel), width: width, height: height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixel), space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) {
+                let progress = moving ? Double(index) / Double(count - 1) : 0
+                context.draw(cg, in: CGRect(x: -Double(width) * 0.04 * progress, y: -Double(height) * 0.025 * progress, width: Double(width) * (1 + 0.08 * progress), height: Double(height) * (1 + 0.08 * progress)))
             }
             CVPixelBufferUnlockBaseAddress(pixel, [])
-            guard adapter.append(pixel, withPresentationTime: CMTime(value: Int64(index), timescale: 15)) else { throw writer.error ?? LibraryError.unsafeAsset }
+            guard adapter.append(pixel, withPresentationTime: CMTime(value: Int64(index), timescale: moving ? 24 : 15)) else { throw writer.error ?? LibraryError.unsafeAsset }
         }
         input.markAsFinished(); await writer.finishWriting()
         guard writer.status == .completed else { throw writer.error ?? LibraryError.unsafeAsset }

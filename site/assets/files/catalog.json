@@ -2,136 +2,76 @@
   "archives": {
     "../files/周末旅行.zip": [
       {
-        "name": "σæ¿µ£½µùàΦíî/",
+        "name": "周末旅行/",
         "size": 0,
         "directory": true
       },
       {
-        "name": "σæ¿µ£½µùàΦíî/Φ╖»τ║┐Σ╕ÄσÅéΦÇâ/",
-        "size": 0,
-        "directory": true
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._Φ╖»τ║┐Σ╕ÄσÅéΦÇâ",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/σ▒▒Θù┤µ╣ûµ│è.png",
-        "size": 254282,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._σ▒▒Θù┤µ╣ûµ│è.png",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/µùàΦíîµëïΦ«░.pdf",
-        "size": 184051,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._µùàΦíîµëïΦ«░.pdf",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/σæ¿µ£½τÜäσ░ÅΦ«íσêÆ.txt",
-        "size": 111,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._σæ¿µ£½τÜäσ░ÅΦ«íσêÆ.txt",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/LittleNote.swift",
+        "name": "周末旅行/LittleNote.swift",
         "size": 156,
         "directory": false
       },
       {
-        "name": "σæ¿µ£½µùàΦíî/._LittleNote.swift",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/σç║ΦíîΦ«íσêÆ.docx",
+        "name": "周末旅行/出行计划.docx",
         "size": 4084,
         "directory": false
       },
       {
-        "name": "σæ¿µ£½µùàΦíî/._σç║ΦíîΦ«íσêÆ.docx",
-        "size": 163,
+        "name": "周末旅行/周末的小计划.txt",
+        "size": 111,
         "directory": false
+      },
+      {
+        "name": "周末旅行/山间湖泊.png",
+        "size": 987327,
+        "directory": false
+      },
+      {
+        "name": "周末旅行/旅行手记.pdf",
+        "size": 184051,
+        "directory": false
+      },
+      {
+        "name": "周末旅行/路线与参考/",
+        "size": 0,
+        "directory": true
       }
     ],
     "../files/旅行资料.zip": [
       {
-        "name": "σæ¿µ£½µùàΦíî/",
+        "name": "周末旅行/",
         "size": 0,
         "directory": true
       },
       {
-        "name": "σæ¿µ£½µùàΦíî/Φ╖»τ║┐Σ╕ÄσÅéΦÇâ/",
-        "size": 0,
-        "directory": true
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._Φ╖»τ║┐Σ╕ÄσÅéΦÇâ",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/σ▒▒Θù┤µ╣ûµ│è.png",
-        "size": 254282,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._σ▒▒Θù┤µ╣ûµ│è.png",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/µùàΦíîµëïΦ«░.pdf",
-        "size": 184051,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._µùàΦíîµëïΦ«░.pdf",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/σæ¿µ£½τÜäσ░ÅΦ«íσêÆ.txt",
-        "size": 111,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/._σæ¿µ£½τÜäσ░ÅΦ«íσêÆ.txt",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/LittleNote.swift",
+        "name": "周末旅行/LittleNote.swift",
         "size": 156,
         "directory": false
       },
       {
-        "name": "σæ¿µ£½µùàΦíî/._LittleNote.swift",
-        "size": 163,
-        "directory": false
-      },
-      {
-        "name": "σæ¿µ£½µùàΦíî/σç║ΦíîΦ«íσêÆ.docx",
+        "name": "周末旅行/出行计划.docx",
         "size": 4084,
         "directory": false
       },
       {
-        "name": "σæ¿µ£½µùàΦíî/._σç║ΦíîΦ«íσêÆ.docx",
-        "size": 163,
+        "name": "周末旅行/周末的小计划.txt",
+        "size": 111,
         "directory": false
+      },
+      {
+        "name": "周末旅行/山间湖泊.png",
+        "size": 987327,
+        "directory": false
+      },
+      {
+        "name": "周末旅行/旅行手记.pdf",
+        "size": 184051,
+        "directory": false
+      },
+      {
+        "name": "周末旅行/路线与参考/",
+        "size": 0,
+        "directory": true
       }
     ]
   },
@@ -139,9 +79,9 @@
     {
       "path": "../files/山间湖泊.png",
       "name": "山间湖泊.png",
-      "size": 254282,
+      "size": 987327,
       "mime": "image/png",
-      "sha256": "9d670180f38823f520c1c20109ed3402b1b58e31a527dfe27585dc59e3b25614"
+      "sha256": "da0a84d1144ca8792e39ab11a0cf95abe2704d686b3dfa8612cfe6826787f356"
     },
     {
       "path": "../files/周末的小计划.txt",
@@ -167,9 +107,9 @@
     {
       "path": "../files/周末旅行.zip",
       "name": "周末旅行.zip",
-      "size": 362367,
+      "size": 1108525,
       "mime": "application/zip",
-      "sha256": "b9e0e6d409442b33a25e51cfd73de198bfba891723e818ef0f1e7922ead38be4"
+      "sha256": "17cb7793ca2115c64c2efce5fafdb4aec8b3251f835b897513db29c08b37a03f"
     },
     {
       "path": "../files/LittleNote.swift",
@@ -188,16 +128,16 @@
     {
       "path": "../files/湖边的风.mov",
       "name": "湖边的风.mov",
-      "size": 17429,
-      "mime": "video/mp4",
-      "sha256": "6d5d388ea05f5cd8e952deb22bef249a8bcd21f4d715db2b700b1226801e60c5"
+      "size": 725735,
+      "mime": "video/quicktime",
+      "sha256": "511034aa094c7eb8a1ac7604ac3ce251a508341822575268f1e3edcb64ad1b08"
     },
     {
       "path": "../files/旅行资料.zip",
       "name": "旅行资料.zip",
-      "size": 362367,
+      "size": 1108525,
       "mime": "application/zip",
-      "sha256": "b9e0e6d409442b33a25e51cfd73de198bfba891723e818ef0f1e7922ead38be4"
+      "sha256": "17cb7793ca2115c64c2efce5fafdb4aec8b3251f835b897513db29c08b37a03f"
     },
     {
       "path": "../files/相机配置.dat",

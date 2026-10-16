@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check main.js && node --check desktop.js && node --check motion.js && node --check pdf-view.js && node --check file-library.js && node --check hold-gesture.js && node --check assets/release-data.js && node --check assets/releases.js && node --check scripts/sync-releases.mjs && node --check assets/desktop-ui.js && node --check assets/text-note.js",
+    "check": "node --check main.js && node --check desktop.js && node --check motion.js && node --check pdf-view.js && node --check file-library.js && node --check hold-gesture.js && node --check assets/release-data.js && node --check assets/releases.js && node --check scripts/sync-releases.mjs && node --check assets/desktop-ui.js && node --check assets/text-note.js && node --check assets/chat-replies.js && node --check assets/file-editors.js && node --check scripts/prepare-native-media.cjs",
     "preview": "python3 -m http.server 5173 --bind 127.0.0.1"
   }
 }

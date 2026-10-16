@@ -88,6 +88,7 @@ struct CardSurface: View {
     var showsNail = true
     /// WebKit's separately composited backing layer is captured by takeSnapshot
     /// for offline exports, then placed inside the unchanged native paper finish.
+    /// Editor stock exports also use a transparent snapshot to keep the paper empty.
     var exportWebSnapshot: NSImage? = nil
     @State private var resizeOriginal: NSSize?
     @State private var hovering = false
@@ -167,7 +168,7 @@ struct CardSurface: View {
             if wide {
                 VStack(spacing: 0) {
                     if let item, item.kind == .image { PhotoBody(store: store, item: item, interaction: { model.interaction($0) }, pull: paperPull, fold: fold, isLeft: isLeft) }
-                    else if item?.kind == .link, let exportWebSnapshot {
+                    else if let exportWebSnapshot {
                         Image(nsImage: exportWebSnapshot).resizable().interpolation(.high).scaledToFit()
                             .clipShape(SoftSheetMask())
                             .overlay(SheetLighting(pull: .resting, isLeft: false))

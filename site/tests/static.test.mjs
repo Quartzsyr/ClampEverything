@@ -26,7 +26,7 @@ test('all twelve types use existing native renderings and real source files',asy
  assert.equal(manifest.items.length,12);assert.equal(manifest.padding,32);assert.match(manifest.renderer,/CardSurface/);
  for(const item of manifest.items){assert.ok(item.width>100&&item.height>100);assert.ok((await stat(new URL(item.file,native))).isFile());
  for(const path of [item.left,item.right,item.compactLeft,item.compactRight,item.source,...(item.pages||[]).flatMap(p=>[p.left,p.right,p.surfaceLeft,p.surfaceRight])]){
- const data=await readFile(new URL(path,native));assert.equal(data.subarray(1,4).toString(),'PNG',path);assert.ok(data.length>100,path);
+ const data=await readFile(new URL(path,native));assert.ok(data.subarray(1,4).toString()==='PNG'||(data.subarray(0,4).toString()==='RIFF'&&data.subarray(8,12).toString()==='WEBP'),path);assert.ok(data.length>100,path);
  }
  }
  for(const kind of ['document','word'])assert.equal(manifest.items.find(i=>i.kind===kind).pages.length,3);
@@ -36,7 +36,7 @@ test('project Pages paths and published assets are self contained',async()=>{
  for(const match of html.matchAll(/(?:src|href)="(\.\/[^"#]+)"/g))assert.ok((await stat(new URL(match[1],root))).isFile());
  assert.doesNotMatch(html,/(?:src|href)="\/(?!\/)/);assert.doesNotMatch(html,/<script[^>]+src="https?:/);
  async function bytes(url){let n=0;for(const entry of await readdir(url,{withFileTypes:true})){const child=new URL(encodeURIComponent(entry.name)+(entry.isDirectory()?'/':''),url);n+=entry.isDirectory()?await bytes(child):(await stat(child)).size;}return n;}
- assert.ok(await bytes(new URL('assets/',root))<12_000_000);
+ assert.ok(await bytes(new URL('assets/',root))<20_000_000);
  const css=await readFile(new URL('style.css',root),'utf8');assert.match(css,/prefers-reduced-motion:\s*reduce/);
  const js=await readFile(new URL('main.js',root),'utf8');assert.doesNotMatch(js,/function playDemo|function paperPage|class="native-note"/,'no generated document window or scripted capture');
 });

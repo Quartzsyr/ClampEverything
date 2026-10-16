@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 root = Path(__file__).resolve().parents[1]
 files = root / 'assets/files'
 manifest = json.loads((root / 'assets/native/manifest.json').read_text())
-types = {'.png':'image/png', '.pdf':'application/pdf', '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.txt':'text/plain', '.swift':'text/plain', '.html':'text/html', '.wav':'audio/wav', '.mov':'video/mp4', '.zip':'application/zip', '.dat':'application/octet-stream'}
+types = {'.png':'image/png', '.pdf':'application/pdf', '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.txt':'text/plain', '.swift':'text/plain', '.html':'text/html', '.wav':'audio/wav', '.mov':'video/quicktime', '.zip':'application/zip', '.dat':'application/octet-stream'}
 entries = []
 for name in dict.fromkeys(item['file'] for item in manifest['items']):
     path = (root / 'assets/native' / name).resolve()

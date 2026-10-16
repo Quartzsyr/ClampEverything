@@ -5,7 +5,7 @@
   "method": "Offscreen NSHostingView, real CardSurface, real fixture files, Retina 2x",
   "personalFilesUsed": false,
   "sourceSHA256": {
-    "CardViews.swift": "ea4aca67bf3e25649ab4e7339a712dc4b5588a9f246bf3894a0384a16f94a560",
+    "CardViews.swift": "d64cf9b61710bbb7463761dce47c61466e1eec1cb9fe175b74e7fb122d81d263",
     "MinimalPinnedContent.swift": "1b2fbc44db4b0bd97a8703bc711d1a4ff80678da5dea7c584110d1503c65c405",
     "MinimalSurfaceLayout.swift": "525e19f3a6a1aa4d867f24bc62a5b0c24dbff8e6068796805ccff30441b706b9",
     "DocumentReadingPreview.swift": "261a867b639fc078fd89d77c0f7be5dab9606909467753f00b5818332c65da88",
@@ -14,7 +14,7 @@
     "CompactClipView.swift": "e56ea529967589d1d46997b421393beca1a81ee8ebf49d4958f13f30dd877303",
     "HangingMetalClip.swift": "e9fb108df1420ae10d7c55dc1d4e349cfe5e00c52f8425f34624eae9305e4472",
     "CursorPickupMotion.swift": "2b434f12020b558a8905f43e53cc0d8ed0aa88418277e650a572f36f2a70de4c",
-    "WebsiteAssetExporter.swift": "bd3ca83376bf87f77290c07ea90a2896747fdb796ce7bc6470692a165bba0a86"
+    "WebsiteAssetExporter.swift": "682e95e002ee59afe7a256404b300c7eb36564420cca0b6168ecfebf071067a8"
   },
   "webFixture": {
     "file": "../files/field-notes.html",
@@ -27,5 +27,23 @@
       "note-blank-right.webp"
     ],
     "method": "CardSurface offscreen export with empty text, same 284×224 geometry; WebP quality 95. Browser overlays edited TXT using the native 14pt font, 18pt inset and 5pt line spacing."
+  },
+  "generatedMedia": {
+    "tool": "built-in image_gen",
+    "photo": "../files/山间湖泊.png",
+    "movie": "../files/湖边的风.mov",
+    "movieSource": "../../media-source/lake-film.jpg",
+    "movieEncoding": "AVAssetWriter H.264, 960×540, 24 fps, 6 s, slow camera push-in from imagegen photographic still",
+    "nativePreviews": "CardSurface / PhotoBody / MinimalMediaObject, scoped media export; WebP quality 95",
+    "prompts": "../../media-source/README.md"
+  },
+  "editorStock": {
+    "files": [
+      "code-blank-left.webp",
+      "code-blank-right.webp",
+      "word-blank-left.webp",
+      "word-blank-right.webp"
+    ],
+    "method": "Shipping CardSurface, empty Swift/DOCX fixtures, unchanged clip and paper finish; browser displays pages rendered from the edited file model"
   }
 }

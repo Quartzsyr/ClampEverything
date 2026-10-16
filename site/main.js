@@ -1,13 +1,13 @@
-import { createDesktop } from './desktop.js?v=20261016-desktop';
+import { createDesktop } from './desktop.js?v=20261016-workspace';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
-import { FileLibrary } from './file-library.js?v=20261016-desktop';
+import { FileLibrary } from './file-library.js?v=20261016-workspace';
 import { HoldGesture } from './hold-gesture.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const nativeBase = new URL('./assets/native/', import.meta.url);
-const nativeURL = path => new URL(path, nativeBase).href;
+const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261016-workspace');return url.href;};
 const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
@@ -39,6 +39,7 @@ function renderSprite(obj, button, compact) {
   Object.assign(button.style,{left:`${-hook}px`,top:'-26px',width:`${width}px`,height:`${height}px`});
   $('img',button).src=sprite(obj.item,obj.side,compact,obj.page);
   let text=$('.edited-note-text',button);if(obj.item.textContent!==undefined&&!compact){if(!text){text=document.createElement('span');text.className='edited-note-text';button.append(text);}text.textContent=obj.item.textContent;text.style.left=obj.side==='left'?'33px':'27px';}
+  if(obj.item.previewPages&&!compact){let preview=$('.edited-preview',button);if(!preview){preview=new Image();preview.className='edited-preview';preview.draggable=false;preview.alt='编辑后文件的实际内容';button.append(preview);}preview.src=obj.item.previewPages[obj.page]||obj.item.previewPages[0];Object.assign(preview.style,{left:`${obj.side==='left'?15:9}px`,top:'44px',width:`${obj.item.width-24}px`,height:`${obj.item.height-53}px`});let clip=$('.edited-clip-occluder',button);if(!clip){clip=new Image();clip.className='edited-clip-occluder';clip.draggable=false;clip.alt='';button.append(clip);}clip.src=sprite(obj.item,obj.side,false,obj.page);Object.assign(clip.style,{left:`${-padding}px`,top:`${-padding}px`,width:`${width+padding*2}px`,height:`${height+padding*2}px`,clipPath:`inset(0 0 calc(100% - ${padding+54}px) 0)`});}
   Object.assign($('img',button).style,{left:`${-padding}px`,top:`${-padding}px`,width:`${width+padding*2}px`,height:`${height+padding*2}px`});
 }
 function render(obj) {
@@ -88,6 +89,7 @@ async function turnPage(obj,step) {
   const page=obj.item.pages[obj.page],surface=page[obj.side==='left'?'surfaceLeft':'surfaceRight'];
   old.src=nativeURL(surface);Object.assign(old.style,{left:`${obj.side==='left'?15:9}px`,top:'44px',width:`${obj.item.width-24}px`,height:`${obj.item.height-53}px`,transformOrigin:'0 50%'});
   obj.expandedButton.append(old);obj.page=next;image.src=sprite(obj.item,obj.side,false,next);
+  if(obj.item.previewPages)renderSprite(obj,obj.expandedButton,false);
   if(animated())await old.animate([{transform:'perspective(850px) rotateY(0deg)',opacity:1},{transform:`perspective(850px) rotateY(${step>0?-105:105}deg)`,opacity:0}],{duration:480,easing:'cubic-bezier(.25,.6,.3,1)',fill:'forwards'}).finished;
   old.remove();obj.busy=false;render(obj);status(obj.item.title,`原文件第 ${obj.page+1} 页`);
 }
@@ -174,8 +176,8 @@ function bindDialogGeometry(){
   });
   document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',finish);window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
 }
-function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">重新整理演示桌面</button><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
-function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击或 Enter 打开；直接拖动桌面图标可以重新摆放，Esc 取消拖动，位置会在此浏览器保留。文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>信息输入框可输入，Enter 发送，Shift+Enter 换行；备忘录可以直接编辑，新文字也可按住 Option 夹取。访达支持搜索文件。Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
+function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">还原演示桌面与文件</button><p class="reset-note">恢复初始示例，清除本地编辑与废纸篓内容。</p><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
+function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击或 Enter 打开；直接拖动桌面图标可以重新摆放，Esc 取消拖动，位置会在此浏览器保留。文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>信息输入框可输入，Enter 发送，Shift+Enter 换行；备忘录可以直接编辑，新文字也可按住 Option 夹取。信息会按内容回复文字、照片、影片或文档，可试着发“照片”“视频”“计划”或“代码”。Word 可编辑正文和格式，代码可直接修改，⌘S 保存并支持下载，刷新后恢复工作文件。图标可拖入废纸篓，⌘⌫ 移入，⌘Z 放回。访达支持搜索文件。Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
 function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();environment?.reset();}
 function bind(){
   bindDialogGeometry();

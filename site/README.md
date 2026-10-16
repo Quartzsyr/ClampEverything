@@ -84,3 +84,16 @@ HTML 原文件通过 `.html.bin` 二进制副本读取和校验，避免自定�
 `node tests/desktop.cjs` 检查五种宽度下 Dock 放大无重叠、单一提示、图标摆放与刷新恢复、双击打开、信息和备忘录输入、独立 TXT 文件的夹取与下载，以及逐行高亮的移动/停稳状态与访达搜索。`ENGINE=webkit` 可使用已安装的 WebKit 内核运行同一测试。
 
 可编辑文字沿用原生空白纸张与金属夹（`note-blank-*.webp`），只把真实 TXT 正文绘制在原生内容区域。空白纸张由 `CLAMP_WEBSITE_BLANK_NOTE=1 .build/debug/ClampEverything --export-website "$PWD/site/assets/native"` 离屏导出 PNG，再转换为 WebP quality 95；不触碰其他素材。
+
+## 可编辑的真实文件与本地会话
+
+- 信息会根据发送内容回复文字、照片、影片、PDF、Word、代码、文件夹、录音、ZIP 或网页；同类请求有多种措辞。输入状态按顺序出现，阅读旧消息或正在夹取时，新回复不会强制滚动。所有附件仍引用真实演示文件，文字回复则生成独立 TXT。联系人信息明确标识本地演示会话，不连接真实 iMessage。
+- Word 点击「编辑」可修改正文、标题样式、粗体、斜体并撤销/重做；保存、⌘S 和下载均写回真实 DOCX。JSZip 3.10.1 读取原始 OOXML 包，只替换 document.xml，其余关系、主题与元数据保留。原件未编辑时不会重新打包。编辑后立即夹取会先保存最新版本，纸张展示来自当前正文的实际分页预览。
+- Swift 支持编辑、语法着色、行号、光标行列、缩进、自动保存、⌘S 与下载。实际 .swift 字节、桌面缩略图、夹取预览保持一致，不在浏览器执行代码。
+- DOCX、Swift 和备忘录的工作文件保存在此浏览器的 IndexedDB，刷新后恢复；浏览器不允许存储时保留当前会话的文件。初始聊天、历史消息和先前夹取的版本各自保留其文件身份。
+- 桌面图标可拖到 Dock 废纸篓或废纸篓窗口，右键也可移入。⌘⌫ 移入、⌘Z 放回，支持逐项/全部放回和清空。图标原位置保留，废纸篓状态可跨刷新恢复；设置里的还原桌面与文件恢复原始演示材料并清除本地工作副本。
+- 摄影图片与影片画面来自内置 image_gen；影片以生成画面编码为真实 6 秒 H.264 MOV，包含缓慢推近。最终文件、提示词与重建方式见 [media-source/README.md](media-source/README.md)。
+
+`node tests/workspace.cjs` 验证多类回复、DOCX 格式与包内其他文件保留、代码编辑、编辑后立即夹取/下载、跨刷新恢复、废纸篓操作和真实影片播放。`ENGINE=webkit` 验证 Safari 内核。另用 macOS textutil 和 Quick Look 验证实际下载的 DOCX 可解析和渲染。
+
+新增第三方：`assets/vendor/jszip/` 随包附带 JSZip MIT 与 Pako MIT 许可证，不依赖外部 CDN。JSZip API：[读取现有 ZIP](https://stuk.github.io/jszip/documentation/api_jszip/load_async.html)、[写回 ZIP](https://stuk.github.io/jszip/documentation/api_jszip/generate_async.html)。

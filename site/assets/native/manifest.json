@@ -1,307 +1,307 @@
 {
-  "compactHeight" : 60,
-  "compactPinLeft" : [
+  "compactHeight": 60,
+  "compactPinLeft": [
     44,
     26
   ],
-  "compactPinRight" : [
+  "compactPinRight": [
     20,
     26
   ],
-  "compactRotationApplied" : true,
-  "compactWidth" : 64,
-  "cursor" : {
-    "height" : 36,
-    "mouthX" : 0,
-    "mouthY" : 18,
-    "padding" : 8,
-    "width" : 54
+  "compactRotationApplied": true,
+  "compactWidth": 64,
+  "cursor": {
+    "height": 36,
+    "mouthX": 0,
+    "mouthY": 18,
+    "padding": 8,
+    "width": 54
   },
-  "expandedRotationLeft" : 105,
-  "expandedRotationRight" : -105,
-  "items" : [
+  "expandedRotationLeft": 105,
+  "expandedRotationRight": -105,
+  "items": [
     {
-      "compactLeft" : "photo-compact-left.png",
-      "compactRight" : "photo-compact-right.png",
-      "file" : "../files/山间湖泊.png",
-      "height" : 238,
-      "kind" : "photo",
-      "left" : "photo-left.png",
-      "pinLeft" : [
+      "compactLeft": "photo-compact-left.webp",
+      "compactRight": "photo-compact-right.webp",
+      "file": "../files/山间湖泊.png",
+      "height": 238,
+      "kind": "photo",
+      "left": "photo-left.webp",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         276,
         26
       ],
-      "right" : "photo-right.png",
-      "source" : "photo-source.png",
-      "title" : "山间湖泊.png",
-      "width" : 320
+      "right": "photo-right.webp",
+      "source": "../files/山间湖泊.png",
+      "title": "山间湖泊.png",
+      "width": 320
     },
     {
-      "compactLeft" : "note-compact-left.png",
-      "compactRight" : "note-compact-right.png",
-      "file" : "../files/周末的小计划.txt",
-      "height" : 224,
-      "kind" : "note",
-      "left" : "note-left.png",
-      "pinLeft" : [
+      "compactLeft": "note-compact-left.png",
+      "compactRight": "note-compact-right.png",
+      "file": "../files/周末的小计划.txt",
+      "height": 224,
+      "kind": "note",
+      "left": "note-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         240,
         26
       ],
-      "right" : "note-right.png",
-      "source" : "note-source.png",
-      "title" : "周末的小计划",
-      "width" : 284
+      "right": "note-right.png",
+      "source": "note-source.png",
+      "title": "周末的小计划",
+      "width": 284
     },
     {
-      "compactLeft" : "document-compact-left.png",
-      "compactRight" : "document-compact-right.png",
-      "file" : "../files/旅行手记.pdf",
-      "height" : 309,
-      "kind" : "document",
-      "left" : "document-left.png",
-      "pages" : [
+      "compactLeft": "document-compact-left.png",
+      "compactRight": "document-compact-right.png",
+      "file": "../files/旅行手记.pdf",
+      "height": 309,
+      "kind": "document",
+      "left": "document-left.png",
+      "pages": [
         {
-          "left" : "document-page-1-left.png",
-          "right" : "document-page-1-right.png",
-          "surfaceLeft" : "document-page-1-surface-left.png",
-          "surfaceRight" : "document-page-1-surface-right.png"
+          "left": "document-page-1-left.png",
+          "right": "document-page-1-right.png",
+          "surfaceLeft": "document-page-1-surface-left.png",
+          "surfaceRight": "document-page-1-surface-right.png"
         },
         {
-          "left" : "document-page-2-left.png",
-          "right" : "document-page-2-right.png",
-          "surfaceLeft" : "document-page-2-surface-left.png",
-          "surfaceRight" : "document-page-2-surface-right.png"
+          "left": "document-page-2-left.png",
+          "right": "document-page-2-right.png",
+          "surfaceLeft": "document-page-2-surface-left.png",
+          "surfaceRight": "document-page-2-surface-right.png"
         },
         {
-          "left" : "document-page-3-left.png",
-          "right" : "document-page-3-right.png",
-          "surfaceLeft" : "document-page-3-surface-left.png",
-          "surfaceRight" : "document-page-3-surface-right.png"
+          "left": "document-page-3-left.png",
+          "right": "document-page-3-right.png",
+          "surfaceLeft": "document-page-3-surface-left.png",
+          "surfaceRight": "document-page-3-surface-right.png"
         }
       ],
-      "pinLeft" : [
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         172,
         26
       ],
-      "right" : "document-right.png",
-      "source" : "document-source.png",
-      "title" : "旅行手记.pdf",
-      "width" : 216
+      "right": "document-right.png",
+      "source": "document-source.png",
+      "title": "旅行手记.pdf",
+      "width": 216
     },
     {
-      "compactLeft" : "word-compact-left.png",
-      "compactRight" : "word-compact-right.png",
-      "file" : "../files/出行计划.docx",
-      "height" : 309,
-      "kind" : "word",
-      "left" : "word-left.png",
-      "pages" : [
+      "compactLeft": "word-compact-left.png",
+      "compactRight": "word-compact-right.png",
+      "file": "../files/出行计划.docx",
+      "height": 309,
+      "kind": "word",
+      "left": "word-left.png",
+      "pages": [
         {
-          "left" : "word-page-1-left.png",
-          "right" : "word-page-1-right.png",
-          "surfaceLeft" : "word-page-1-surface-left.png",
-          "surfaceRight" : "word-page-1-surface-right.png"
+          "left": "word-page-1-left.png",
+          "right": "word-page-1-right.png",
+          "surfaceLeft": "word-page-1-surface-left.png",
+          "surfaceRight": "word-page-1-surface-right.png"
         },
         {
-          "left" : "word-page-2-left.png",
-          "right" : "word-page-2-right.png",
-          "surfaceLeft" : "word-page-2-surface-left.png",
-          "surfaceRight" : "word-page-2-surface-right.png"
+          "left": "word-page-2-left.png",
+          "right": "word-page-2-right.png",
+          "surfaceLeft": "word-page-2-surface-left.png",
+          "surfaceRight": "word-page-2-surface-right.png"
         },
         {
-          "left" : "word-page-3-left.png",
-          "right" : "word-page-3-right.png",
-          "surfaceLeft" : "word-page-3-surface-left.png",
-          "surfaceRight" : "word-page-3-surface-right.png"
+          "left": "word-page-3-left.png",
+          "right": "word-page-3-right.png",
+          "surfaceLeft": "word-page-3-surface-left.png",
+          "surfaceRight": "word-page-3-surface-right.png"
         }
       ],
-      "pinLeft" : [
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         172,
         26
       ],
-      "right" : "word-right.png",
-      "source" : "word-source.png",
-      "title" : "出行计划.docx",
-      "width" : 216
+      "right": "word-right.png",
+      "source": "word-source.png",
+      "title": "出行计划.docx",
+      "width": 216
     },
     {
-      "compactLeft" : "folder-compact-left.png",
-      "compactRight" : "folder-compact-right.png",
-      "file" : "../files/周末旅行.zip",
-      "height" : 420,
-      "kind" : "folder",
-      "left" : "folder-left.png",
-      "pinLeft" : [
+      "compactLeft": "folder-compact-left.png",
+      "compactRight": "folder-compact-right.png",
+      "file": "../files/周末旅行.zip",
+      "height": 420,
+      "kind": "folder",
+      "left": "folder-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         276,
         26
       ],
-      "right" : "folder-right.png",
-      "source" : "folder-source.png",
-      "title" : "周末旅行",
-      "width" : 320
+      "right": "folder-right.png",
+      "source": "folder-source.png",
+      "title": "周末旅行",
+      "width": 320
     },
     {
-      "compactLeft" : "code-compact-left.png",
-      "compactRight" : "code-compact-right.png",
-      "file" : "../files/LittleNote.swift",
-      "height" : 273,
-      "kind" : "code",
-      "left" : "code-left.png",
-      "pinLeft" : [
+      "compactLeft": "code-compact-left.png",
+      "compactRight": "code-compact-right.png",
+      "file": "../files/LittleNote.swift",
+      "height": 273,
+      "kind": "code",
+      "left": "code-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         276,
         26
       ],
-      "right" : "code-right.png",
-      "source" : "code-source.png",
-      "title" : "LittleNote.swift",
-      "width" : 320
+      "right": "code-right.png",
+      "source": "code-source.png",
+      "title": "LittleNote.swift",
+      "width": 320
     },
     {
-      "compactLeft" : "audio-compact-left.png",
-      "compactRight" : "audio-compact-right.png",
-      "file" : "../files/午后的录音.wav",
-      "height" : 229,
-      "kind" : "audio",
-      "left" : "audio-left.png",
-      "pinLeft" : [
+      "compactLeft": "audio-compact-left.png",
+      "compactRight": "audio-compact-right.png",
+      "file": "../files/午后的录音.wav",
+      "height": 229,
+      "kind": "audio",
+      "left": "audio-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         260,
         26
       ],
-      "right" : "audio-right.png",
-      "source" : "audio-source.png",
-      "title" : "午后的录音.wav",
-      "width" : 304
+      "right": "audio-right.png",
+      "source": "audio-source.png",
+      "title": "午后的录音.wav",
+      "width": 304
     },
     {
-      "compactLeft" : "video-compact-left.png",
-      "compactRight" : "video-compact-right.png",
-      "file" : "../files/湖边的风.mov",
-      "height" : 221,
-      "kind" : "video",
-      "left" : "video-left.png",
-      "pinLeft" : [
+      "compactLeft": "video-compact-left.webp",
+      "compactRight": "video-compact-right.webp",
+      "file": "../files/湖边的风.mov",
+      "height": 221,
+      "kind": "video",
+      "left": "video-left.webp",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         268,
         26
       ],
-      "right" : "video-right.png",
-      "source" : "video-source.png",
-      "title" : "湖边的风.mov",
-      "width" : 312
+      "right": "video-right.webp",
+      "source": "video-source.webp",
+      "title": "湖边的风.mov",
+      "width": 312
     },
     {
-      "compactLeft" : "archive-compact-left.png",
-      "compactRight" : "archive-compact-right.png",
-      "file" : "../files/旅行资料.zip",
-      "height" : 203,
-      "kind" : "archive",
-      "left" : "archive-left.png",
-      "pinLeft" : [
+      "compactLeft": "archive-compact-left.png",
+      "compactRight": "archive-compact-right.png",
+      "file": "../files/旅行资料.zip",
+      "height": 203,
+      "kind": "archive",
+      "left": "archive-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         220,
         26
       ],
-      "right" : "archive-right.png",
-      "source" : "archive-source.png",
-      "title" : "旅行资料.zip",
-      "width" : 264
+      "right": "archive-right.png",
+      "source": "archive-source.png",
+      "title": "旅行资料.zip",
+      "width": 264
     },
     {
-      "compactLeft" : "file-compact-left.png",
-      "compactRight" : "file-compact-right.png",
-      "file" : "../files/相机配置.dat",
-      "height" : 233,
-      "kind" : "file",
-      "left" : "file-left.png",
-      "pinLeft" : [
+      "compactLeft": "file-compact-left.png",
+      "compactRight": "file-compact-right.png",
+      "file": "../files/相机配置.dat",
+      "height": 233,
+      "kind": "file",
+      "left": "file-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         220,
         26
       ],
-      "right" : "file-right.png",
-      "source" : "file-source.png",
-      "title" : "相机配置.dat",
-      "width" : 264
+      "right": "file-right.png",
+      "source": "file-source.png",
+      "title": "相机配置.dat",
+      "width": 264
     },
     {
-      "compactLeft" : "web-compact-left.png",
-      "compactRight" : "web-compact-right.png",
-      "file" : "../files/field-notes.html",
-      "height" : 238,
-      "kind" : "web",
-      "left" : "web-left.png",
-      "pinLeft" : [
+      "compactLeft": "web-compact-left.png",
+      "compactRight": "web-compact-right.png",
+      "file": "../files/field-notes.html",
+      "height": 238,
+      "kind": "web",
+      "left": "web-left.png",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         276,
         26
       ],
-      "right" : "web-right.png",
-      "source" : "web-source.png",
-      "title" : "屏幕夹子 · 下载 Mac 版",
-      "width" : 320
+      "right": "web-right.png",
+      "source": "web-source.png",
+      "title": "屏幕夹子 · 下载 Mac 版",
+      "width": 320
     },
     {
-      "compactLeft" : "group-compact-left.png",
-      "compactRight" : "group-compact-right.png",
-      "file" : "../files/旅行资料.zip",
-      "height" : 420,
-      "kind" : "group",
-      "left" : "group-left.png",
-      "pinLeft" : [
+      "compactLeft": "group-compact-left.webp",
+      "compactRight": "group-compact-right.webp",
+      "file": "../files/旅行资料.zip",
+      "height": 420,
+      "kind": "group",
+      "left": "group-left.webp",
+      "pinLeft": [
         44,
         26
       ],
-      "pinRight" : [
+      "pinRight": [
         276,
         26
       ],
-      "right" : "group-right.png",
-      "source" : "group-source.png",
-      "title" : "这次旅行的材料",
-      "width" : 320
+      "right": "group-right.webp",
+      "source": "group-source.webp",
+      "title": "这次旅行的材料",
+      "width": 320
     }
   ],
-  "padding" : 32,
-  "pngPixelScale" : 2,
-  "renderer" : "CardSurface / ItemBody / DocumentPages / ImageGenCursorClip"
+  "padding": 32,
+  "pngPixelScale": 2,
+  "renderer": "CardSurface / ItemBody / DocumentPages / ImageGenCursorClip"
 }
