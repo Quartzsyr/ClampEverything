@@ -1,6 +1,6 @@
 import { createDesktop } from './desktop.js';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
-import { FileLibrary } from './file-library.js';
+import { FileLibrary } from './file-library.js?v=20261016-binary';
 import { HoldGesture } from './hold-gesture.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -63,7 +63,7 @@ function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=fals
   });
   obj.compactButton.addEventListener('click',()=>setExpanded(obj,true));
   obj.expandedButton.addEventListener('click',()=>{if(!obj.busy)copyItem(obj.item);});
-  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}files.writeDrag(event.dataTransfer,obj.item);});
+  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}if(!files.writeDrag(event.dataTransfer,obj.item))event.preventDefault();});
   for(const surface of [obj.compactButton,obj.expandedButton,grip]){
     surface.addEventListener('pointerenter',()=>{clearTimeout(obj.leaveTimer);if(obj.compact&&!dragging&&!manual){clearTimeout(obj.hoverTimer);obj.hoverTimer=setTimeout(()=>setExpanded(obj,true,true),350);}});
     surface.addEventListener('pointerleave',()=>{clearTimeout(obj.hoverTimer);if(!obj.sticky&&!dragging){obj.leaveTimer=setTimeout(()=>setExpanded(obj,false),450);}});
@@ -135,7 +135,9 @@ async function grasp(item,source,to,token){
   }requestAnimationFrame(frame);});
 }
 function beginCapture(event,source){
-  if(event.button!==0||manual||!gesture.press())return;
+  if(event.button!==0||manual)return;
+  if(!files.get(source.item)?.file){event.preventDefault();status('正在重新读取文件',source.item.title);files.ensure(source.item).then(()=>status('文件已就绪','请再次夹取')).catch(()=>status('文件暂时不可用','其他内容仍可正常夹取'));return;}
+  if(!gesture.press())return;
   event.preventDefault();run++;const token=run;
   hasPointer=true;point.x=event.clientX;point.y=event.clientY;
   manual={item:source.item,source,token,start:{x:event.clientX,y:event.clientY},ready:false,released:false};
@@ -143,6 +145,7 @@ function beginCapture(event,source){
   grasp(source.item,source,manual.start,token).then(ok=>{if(ok&&manual?.token===token){manual.ready=true;source.element.classList.remove('aiming','being-clamped');if(manual.released)finishManual();}});
 }
 async function copyItem(item){
+  try{await files.ensure(item);}catch{status('未能复制','原文件暂时不可用，请稍后重试');return;}
   environment.clipboard=item;
   try{if(item.kind==='note'||item.kind==='code'){await navigator.clipboard?.writeText(await files.text(item));}
   else if(item.kind==='photo'&&window.ClipboardItem){await navigator.clipboard?.write([new ClipboardItem({'image/png':files.get(item).file})]);}}
@@ -200,7 +203,7 @@ function finishManual(){
 async function init(){
   document.body.classList.add('load-pending');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();await files.load(manifest.items);
   environment=createDesktop({manifest,nativeURL,files,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
-  bind();await environment.mount();document.body.classList.remove('load-pending');status('按住 ⌥ Option，随手夹取','普通鼠标单击选择、双击打开；按住 Option 夹取，松开鼠标放置');
+  bind();await environment.mount();document.body.classList.remove('load-pending');if(files.failures.size)status('桌面已就绪',`${files.failures.size} 个文件暂时不可用，其他内容可继续使用；再次夹取会重试`);else status('按住 ⌥ Option，随手夹取','普通鼠标单击选择、双击打开；按住 Option 夹取，松开鼠标放置');
 }
 function updateClock(){$('#clock').textContent=new Intl.DateTimeFormat('zh-CN',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}updateClock();setInterval(updateClock,30000);
 init().catch(error=>{document.body.classList.remove('load-pending');status('原生演示素材加载失败','请刷新页面重试');console.error(error);});

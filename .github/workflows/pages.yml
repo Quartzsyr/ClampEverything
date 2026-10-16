@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths: ['site/**', '.github/workflows/pages.yml']
+  release:
+    types: [published, edited, deleted]
   workflow_dispatch:
 
 permissions:
@@ -21,6 +23,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Sync public GitHub Release data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node site/scripts/sync-releases.mjs
       - name: Derive previews and catalog from original files
         run: python3 site/scripts/prepare-files.py
       - name: Check JavaScript

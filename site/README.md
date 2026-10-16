@@ -66,3 +66,13 @@ GitHub Actions 发布静态页面、JS 和 assets；测试与原生导出参考�
 当前下载按钮直达 [v1.7.16 arm64 DMG](https://github.com/Quartzsyr/ClampEverything/releases/download/v1.7.16/ClampEverything-1.7.16-arm64.dmg)，同一窗口提供详细 Release 说明、SHA-256 和开发签名状态。
 
 新增窗口回归：`node tests/windows.cjs` 验证所有应用和设置面板的拖动与边角缩放、五种屏幕下下载入口的首屏可见性，并实际下载、校验 DMG。
+
+## GitHub 下载统计与版本记录
+
+桌面内的下载网页从 GitHub REST Release 接口读取各版本的 DMG 附件下载次数，累计值不计入校验文件或图片附件。显示发布时间、最新版 / 预发布标记、每版次数、安装包与更新说明入口。页面打开时同步，成功数据本地缓存 10 分钟，可手动刷新；接口不可用时保留上次数据，未读取到的计数不伪装成零。
+
+`node scripts/sync-releases.mjs` 为发布包生成真实 GitHub 快照和静态列表。部署也会在 Release 发布、编辑或删除时触发，构建凭据仅在服务器内存使用。浏览器不包含令牌。接口文档：[GitHub Releases](https://docs.github.com/en/rest/releases/releases)。
+
+HTML 原文件通过 `.html.bin` 二进制副本读取和校验，避免自定义域名 CDN 的脚本注入改变 HTML 字节；正常预览仍打开 HTML。文件请求带原件摘要版本参数，失败后重新读取，单个文件不可用不会阻止整个桌面初始化，也不会创建空文件冒充原件。
+
+`node tests/releases.cjs` 检查版本、下载统计、刷新及限流回退；`node tests/loading.cjs` 复现 CDN HTML 注入和单文件失败。静态测试同时核对 HTML 与二进制传输副本逐字节相同。

@@ -18,7 +18,14 @@ entries = []
 for name in dict.fromkeys(item['file'] for item in manifest['items']):
     path = (root / 'assets/native' / name).resolve()
     data = path.read_bytes()
-    entries.append(dict(path=name, name=path.name, size=len(data), mime=types[path.suffix], sha256=hashlib.sha256(data).hexdigest()))
+    entry = dict(path=name, name=path.name, size=len(data), mime=types[path.suffix], sha256=hashlib.sha256(data).hexdigest())
+    # A CDN may inject scripts into text/html responses. Transport the exact
+    # original bytes as binary; the normal HTML URL remains the live viewer.
+    if path.suffix == '.html':
+        companion = path.with_name(path.name + '.bin')
+        companion.write_bytes(data)
+        entry['bytesPath'] = name + '.bin'
+    entries.append(entry)
 
 word = files / '出行计划.docx'
 with zipfile.ZipFile(word) as archive:

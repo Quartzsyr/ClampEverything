@@ -10,6 +10,7 @@ test('demo catalog identifies real files, folder entries and a Word preview deri
   const bytes=await readFile(new URL(entry.path,native));
   assert.equal(bytes.length,entry.size,entry.name);
   assert.equal(createHash('sha256').update(bytes).digest('hex'),entry.sha256,entry.name);
+  if(entry.bytesPath)assert.deepEqual(await readFile(new URL(entry.bytesPath,native)),bytes,'binary transport preserves the original HTML bytes');
   if(entry.mime==='application/pdf')assert.equal(bytes.subarray(0,5).toString(),'%PDF-');
   if(entry.name.endsWith('.zip')||entry.name.endsWith('.docx'))assert.equal(bytes.subarray(0,2).toString(),'PK');
   if(entry.name.endsWith('.mov'))assert.match(bytes.subarray(0,16).toString(),/ftyp/);
