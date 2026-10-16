@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 (async()=>{const browser=await(process.env.ENGINE==='webkit'?webkit:chromium).launch(),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
 page.on('pageerror',error=>errors.push(error.message));await page.route('https://api.github.com/**',r=>r.fulfill({status:403,body:'{}'}));
 const base=process.env.SITE_URL||'http://127.0.0.1:5173/';
-async function ready(){await page.goto(base);await page.locator('[data-source=desktop-photo]').waitFor();}
+async function ready(){await page.goto(base);await page.locator('[data-source=desktop-photo]').waitFor();await page.frameLocator('.app-safari iframe').locator('.usage').waitFor({state:'attached'});}
 async function minimize(selector,app){const el=page.locator(selector);await el.locator('[data-window-control=minimize]').click();await el.waitFor({state:'hidden'});await page.locator(`.window-genie[data-motion-window="${await el.getAttribute('data-window')}"]`).waitFor({state:'detached'});assert.match(await page.locator(`[data-app=${app}]`).getAttribute('class'),/has-minimized/);await page.locator(`[data-app=${app}]`).click();await el.waitFor({state:'visible'});await page.waitForFunction(selector=>!document.querySelector(selector)?.dataset.windowMotion,selector);}
 async function drag(source,x,y){const r=await source.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+Math.min(25,r.height/2));await page.mouse.down();await page.mouse.move(x,y,{steps:10});await page.mouse.up();await page.waitForTimeout(80);}
 try{
