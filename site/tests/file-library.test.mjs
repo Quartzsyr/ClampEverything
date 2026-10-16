@@ -20,3 +20,13 @@ test('drag export contains the original File bytes and resolves only verified fi
   data.set('application/x-clamp-file',JSON.stringify({kind:'word',id:'unrelated-file'}));assert.equal(library.resolveDrag(transfer,manifest.items),undefined);
  }finally{globalThis.fetch=originalFetch;for(const entry of library.records.values())URL.revokeObjectURL(entry.href);}
 });
+
+test('edited text is its own real TXT File and survives verified drag resolution',async()=>{
+ const library=new FileLibrary(path=>new URL(path,'https://example.com/assets/native/'));
+ const text='新写下的便笺\n准备带上相机。',item=await library.createText(text,{kind:'note',width:284,height:224},'我的备忘录.txt');
+ const record=await library.ensure(item);
+ assert.ok(record.file instanceof File);assert.equal(record.file.name,'我的备忘录.txt');assert.equal(await record.file.text(),text);assert.equal(record.file.size,new TextEncoder().encode(text).length);
+ const data=new Map(),transfer={items:{add:file=>assert.equal(file,record.file)},setData:(k,v)=>data.set(k,v),getData:k=>data.get(k)};
+ library.writeDrag(transfer,item);assert.equal(library.resolveDrag(transfer,[]),item);assert.equal(data.get('text/uri-list'),record.href);
+ assert.notEqual((await library.createText('另一段文字',item)).fileId,item.fileId);URL.revokeObjectURL(record.href);
+});

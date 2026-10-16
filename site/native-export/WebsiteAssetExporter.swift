@@ -24,6 +24,10 @@ import ClampCore
         var pages: [[String: String]]?
     }
     static func export(to output: URL) async throws {
+        if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_BLANK_NOTE"] == "1" {
+            try await exportBlankNote(to: output)
+            return
+        }
         if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_WEB_ONLY"] == "1" {
             try await exportWebOnly(to: output)
             return
@@ -173,6 +177,27 @@ import ClampCore
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try encoder.encode(Manifest(padding: padding, pngPixelScale: NSScreen.main?.backingScaleFactor ?? 2, items: entries)).write(to: output.appendingPathComponent("manifest.json"), options: .atomic)
         try await exportWebOnly(to: output)
+    }
+    /// Empty stock for browser-edited text; keeps the shipping clip and paper.
+    private static func exportBlankNote(to output: URL) async throws {
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("ClampBlankNote-" + UUID().uuidString)
+        let store = ClipStore(root: temporary)
+        store.hidden = true
+        store.state.preferences.motionIntensity = 0
+        let manager = WindowManager(store: store)
+        defer { manager.shutdown(); try? FileManager.default.removeItem(at: temporary) }
+        // Normal capture rejects whitespace: seed a note, then clear its content.
+        store.addTextOrLink("Blank note")
+        let id = store.active.last!.id
+        store.update(id) { $0.text = ""; $0.title = "" }
+        let model = CardModel(id: id, manager: manager)
+        model.expanded = true; model.revealProgress = 1; model.sticky = true
+        model.sheetSize = CGSize(width: 284, height: 224)
+        for side in [ClipSide.left, .right] {
+            setSide(side, id: id, store: store)
+            try await snapshot(CardSurface(store: store, model: model, manager: manager, showsNail: false),
+                size: model.sheetSize, to: output.appendingPathComponent("note-blank-\(side.rawValue).png"), wait: 0.3)
+        }
     }
     /// Repair/update just the webpage material without touching the other native
     /// captures or their provenance. WebKit snapshots bypass its composition layer.

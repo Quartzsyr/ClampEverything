@@ -1,7 +1,14 @@
 // Every source resolves to the bytes of an authored demo file. Native PNGs are
 // thumbnails only: opening, downloading and drag-copying use this same File.
 export class FileLibrary {
-  constructor(nativeURL) { this.url = nativeURL; this.records = new Map(); this.failures = new Map(); }
+  constructor(nativeURL) { this.url = nativeURL; this.records = new Map(); this.failures = new Map(); this.localItems = new Map(); }
+  async createText(text,template,name='新便笺.txt') {
+    const file=new File([text],name,{type:'text/plain;charset=utf-8'}),bytes=await file.arrayBuffer();
+    const sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+    const path=`local/${sha256}.txt`,existing=this.localItems.get(path);if(existing)return existing;
+    const item={...template,file:path,fileId:sha256,title:name.replace(/\.txt$/,''),textContent:text,left:'note-blank-left.webp',right:'note-blank-right.webp'};
+    this.records.set(path,{path,name,size:file.size,mime:file.type,sha256,file,href:URL.createObjectURL(file)});this.localItems.set(path,item);return item;
+  }
   async load(items) {
     const response = await fetch(new URL('./assets/files/catalog.json', import.meta.url),{cache:'no-store'});
     if (!response.ok) throw new Error('演示文件目录加载失败');
@@ -46,16 +53,17 @@ export class FileLibrary {
     transfer.effectAllowed = 'copy';
     transfer.items.add(record.file);
     transfer.setData('application/x-clamp-file', JSON.stringify({id:record.sha256, kind:item.kind}));
-    transfer.setData('text/uri-list', this.url(item.file));
+    const href=item.textContent!==undefined?record.href:this.url(item.file);
+    transfer.setData('text/uri-list', href);
     transfer.setData('text/plain', record.name);
     // Chromium's external file export convention, in addition to the File item.
-    transfer.setData('DownloadURL', `${record.mime}:${record.name}:${this.url(item.file)}`);
+    transfer.setData('DownloadURL', `${record.mime}:${record.name}:${href}`);
     return true;
   }
   resolveDrag(transfer, items) {
     try {
       const {id,kind} = JSON.parse(transfer.getData('application/x-clamp-file'));
-      const item = items.find(item => item.kind === kind && item.fileId === id);
+      const item = [...items,...this.localItems.values()].find(item => item.kind === kind && item.fileId === id);
       return this.find(id) && item;
     } catch { return null; }
   }

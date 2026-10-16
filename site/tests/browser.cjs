@@ -2,7 +2,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const assert=require('node:assert/strict');
 (async()=>{
  const browser=await chromium.launch();const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce',permissions:['clipboard-read','clipboard-write']});const errors=[];
- page.on('pageerror',error=>errors.push(error.message));page.on('response',response=>{if(response.status()>=400)errors.push(`${response.status()} ${response.url()}`)});
+ page.on('pageerror',error=>errors.push(error.message));page.on('response',response=>{if(response.status()>=400&&!(response.url().startsWith('https://api.github.com/repos/Quartzsyr/ClampEverything/releases')&&[403,429].includes(response.status())))errors.push(`${response.status()} ${response.url()}`)});
  const base=process.env.SITE_URL||'http://127.0.0.1:5173/';
  const count=()=>page.locator('.native-object').count();
  async function capture(selector,x,y){const target=page.locator(selector);const r=await target.boundingBox();assert.ok(r,selector);await page.mouse.move(r.x+Math.min(r.width/2,45),r.y+Math.min(r.height/2,30));await page.keyboard.down('Alt');await page.mouse.down();await page.mouse.move(x,y,{steps:5});await page.mouse.up();await page.keyboard.up('Alt');await page.mouse.move(720,70);await page.waitForTimeout(180);}

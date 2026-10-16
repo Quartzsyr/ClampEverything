@@ -1,6 +1,6 @@
-import { createDesktop } from './desktop.js';
+import { createDesktop } from './desktop.js?v=20261016-desktop';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
-import { FileLibrary } from './file-library.js?v=20261016-binary';
+import { FileLibrary } from './file-library.js?v=20261016-desktop';
 import { HoldGesture } from './hold-gesture.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -38,6 +38,7 @@ function renderSprite(obj, button, compact) {
   const {width,height}=dimensions(obj,compact),hook=hookX(obj,compact),padding=pad();
   Object.assign(button.style,{left:`${-hook}px`,top:'-26px',width:`${width}px`,height:`${height}px`});
   $('img',button).src=sprite(obj.item,obj.side,compact,obj.page);
+  let text=$('.edited-note-text',button);if(obj.item.textContent!==undefined&&!compact){if(!text){text=document.createElement('span');text.className='edited-note-text';button.append(text);}text.textContent=obj.item.textContent;text.style.left=obj.side==='left'?'33px':'27px';}
   Object.assign($('img',button).style,{left:`${-padding}px`,top:`${-padding}px`,width:`${width+padding*2}px`,height:`${height+padding*2}px`});
 }
 function render(obj) {
@@ -134,14 +135,15 @@ async function grasp(item,source,to,token){
     if(p<1)requestAnimationFrame(frame);else{image.remove();$('.carry',cursor).src=sourceURL(item);cursor.classList.add('holding');resolve(true);}
   }requestAnimationFrame(frame);});
 }
-function beginCapture(event,source){
+async function beginCapture(event,source){
   if(event.button!==0||manual)return;
   if(!files.get(source.item)?.file){event.preventDefault();status('正在重新读取文件',source.item.title);files.ensure(source.item).then(()=>status('文件已就绪','请再次夹取')).catch(()=>status('文件暂时不可用','其他内容仍可正常夹取'));return;}
   if(!gesture.press())return;
   event.preventDefault();run++;const token=run;
   hasPointer=true;point.x=event.clientX;point.y=event.clientY;
   manual={item:source.item,source,token,start:{x:event.clientX,y:event.clientY},ready:false,released:false};
-  source.element.classList.add('aiming','being-clamped');source.element.setPointerCapture(event.pointerId);
+  environment.clearAim();source.element.classList.add('being-clamped');source.element.setPointerCapture(event.pointerId);
+  if(source.prepare){try{const item=await source.prepare();if(!alive(token))return;source.item=item;manual.item=item;}catch{if(alive(token)){stopDemo(false);status('文字暂时无法保存','请稍后再试');}return;}}
   grasp(source.item,source,manual.start,token).then(ok=>{if(ok&&manual?.token===token){manual.ready=true;source.element.classList.remove('aiming','being-clamped');if(manual.released)finishManual();}});
 }
 async function copyItem(item){
@@ -173,7 +175,7 @@ function bindDialogGeometry(){
   document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',finish);window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
 }
 function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">重新整理演示桌面</button><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
-function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击打开；文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
+function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击或 Enter 打开；直接拖动桌面图标可以重新摆放，Esc 取消拖动，位置会在此浏览器保留。文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>信息输入框可输入，Enter 发送，Shift+Enter 换行；备忘录可以直接编辑，新文字也可按住 Option 夹取。访达支持搜索文件。Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
 function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();environment?.reset();}
 function bind(){
   bindDialogGeometry();
@@ -187,8 +189,7 @@ function bind(){
   document.addEventListener('contextmenu',event=>{if(manual||gesture.active){event.preventDefault();stopDemo();event.stopImmediatePropagation();}},true);
   window.addEventListener('blur',()=>{if(manual||gesture.held){stopDemo(false);gesture.unhold();syncCapture();}});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
-  const dock=$('#app-dock');dock.addEventListener('pointermove',event=>{if(!animated())return;$$('[data-app]',dock).forEach(button=>{const rect=button.getBoundingClientRect(),distance=Math.abs(event.clientX-rect.x-rect.width/2),scale=1+.38*Math.exp(-.5*(distance/58)**2);button.style.setProperty('--dock-scale',scale.toFixed(3));button.style.setProperty('--dock-lift',`${((scale-1)*22).toFixed(2)}px`);});});dock.addEventListener('pointerleave',()=>{$$('[data-app]',dock).forEach(button=>{button.style.setProperty('--dock-scale',1);button.style.setProperty('--dock-lift','0px');});});
-  document.documentElement.addEventListener('pointerleave',()=>{cursor.hidden=true;});
+  document.documentElement.addEventListener('pointerleave',()=>{cursor.hidden=true;environment?.clearAim();});
   let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(()=>{stopDemo(false);for(const obj of objects.values()){obj.x=obj.docked?(obj.side==='left'?44:innerWidth-44):clamp(obj.x,44,innerWidth-44);obj.y=clamp(obj.y,26,Math.max(26,innerHeight-$('#desktop').getBoundingClientRect().top-(obj.item.height-26)-150));render(obj);}},180);});
 }
 function finishManual(){
@@ -202,7 +203,7 @@ function finishManual(){
 }
 async function init(){
   document.body.classList.add('load-pending');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();await files.load(manifest.items);
-  environment=createDesktop({manifest,nativeURL,files,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
+  environment=createDesktop({manifest,nativeURL,files,animated,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
   bind();await environment.mount();document.body.classList.remove('load-pending');if(files.failures.size)status('桌面已就绪',`${files.failures.size} 个文件暂时不可用，其他内容可继续使用；再次夹取会重试`);else status('按住 ⌥ Option，随手夹取','普通鼠标单击选择、双击打开；按住 Option 夹取，松开鼠标放置');
 }
 function updateClock(){$('#clock').textContent=new Intl.DateTimeFormat('zh-CN',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}updateClock();setInterval(updateClock,30000);

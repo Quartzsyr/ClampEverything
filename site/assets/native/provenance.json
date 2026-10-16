@@ -14,11 +14,18 @@
     "CompactClipView.swift": "e56ea529967589d1d46997b421393beca1a81ee8ebf49d4958f13f30dd877303",
     "HangingMetalClip.swift": "e9fb108df1420ae10d7c55dc1d4e349cfe5e00c52f8425f34624eae9305e4472",
     "CursorPickupMotion.swift": "2b434f12020b558a8905f43e53cc0d8ed0aa88418277e650a572f36f2a70de4c",
-    "WebsiteAssetExporter.swift": "3a240f9d1a4d593ea8bede9554e47f13f3fcb58b19c41675ff13690bbec8bf8f"
+    "WebsiteAssetExporter.swift": "bd3ca83376bf87f77290c07ea90a2896747fdb796ce7bc6470692a165bba0a86"
   },
   "webFixture": {
     "file": "../files/field-notes.html",
     "sha256": "58e84e2c67569e657d9a959ccfda3b9a75c75e5ad765a2c6fccaac8bc65f3e93",
     "method": "WebKit.takeSnapshot and CardSurface; product download page"
+  },
+  "editableNoteStock": {
+    "files": [
+      "note-blank-left.webp",
+      "note-blank-right.webp"
+    ],
+    "method": "CardSurface offscreen export with empty text, same 284×224 geometry; WebP quality 95. Browser overlays edited TXT using the native 14pt font, 18pt inset and 5pt line spacing."
   }
 }

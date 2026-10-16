@@ -1,0 +1,36 @@
+/* One Dock surface. Slots reserve the icon's maximum magnified footprint. */
+.demo-dock{width:max-content;max-width:calc(100vw - 20px);padding:8px 10px 9px;border-radius:23px;bottom:28px}
+.app-dock{position:relative;display:flex;align-items:center;gap:4px;padding:0;overflow:visible;--dock-slot:62px;--dock-icon:48px}
+.app-dock>button{position:relative;display:grid;place-items:center;flex:0 0 var(--dock-slot);width:var(--dock-slot);height:61px;padding:0 0 7px;border-radius:12px;transform:none;background:none;box-shadow:none;--dock-scale:1;--dock-lift:0px}
+.app-dock>button:hover,.app-dock>button.active{background:none;box-shadow:none}
+.app-dock>button svg,.app-dock>button img{width:var(--dock-icon);height:var(--dock-icon);object-fit:contain;pointer-events:none;filter:drop-shadow(0 3px 2px #26332429);transform:translateY(calc(-1 * var(--dock-lift))) scale(var(--dock-scale));transform-origin:center bottom;transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.app-dock>button:active svg,.app-dock>button:active img{filter:brightness(.83) drop-shadow(0 2px 2px #26332429)}
+.app-dock>button::after{content:"";position:absolute;left:calc(50% - 2px);bottom:0;width:4px;height:4px;border-radius:50%;background:#5a7259;opacity:0;box-shadow:0 .5px 1px #ffffffa6}
+.app-dock>button.active::after{opacity:.8}
+.dock-divider{height:39px;margin:0 6px}
+.dock-tooltip{position:absolute;bottom:calc(100% + 20px);transform:translateX(-50%);padding:7px 12px;white-space:nowrap;pointer-events:none;font-size:12px;line-height:1.3;color:#40533e;background:#fffffff0;border:.6px solid #ffffffd9;border-radius:9px;box-shadow:0 5px 16px #33422f18;backdrop-filter:blur(20px);z-index:5}
+@media(max-width:700px){.demo-dock{padding:6px 6px 8px;border-radius:20px}.app-dock{--dock-slot:clamp(34px,10.5vw,48px);--dock-icon:clamp(28px,8.5vw,38px);gap:1px}.app-dock>button{height:49px}.dock-divider{height:31px;margin:0 4px}.dock-tooltip{font-size:11px}}
+#desktop-files{inset:32px 0 135px;right:0;width:auto;display:block;padding:0;overflow:visible;pointer-events:none}
+#desktop-files>.desktop-file{position:absolute;width:100px;height:101px;pointer-events:auto}
+.desktop-file.icon-dragging{opacity:.32}
+.desktop-drag-ghost{position:fixed!important;z-index:115;pointer-events:none!important;margin:0;opacity:.86;filter:drop-shadow(0 8px 8px #243a3533);transform:scale(1.04)}
+.compose-input{font:inherit;font-size:12px;color:#394432;resize:none;min-width:0;flex:1;height:30px;max-height:72px;line-height:18px;padding:5px 12px;border:1px solid #d6dcd1;border-radius:16px;background:#ffffff8c;outline-offset:1px}
+.compose-input::placeholder{color:#9ea897}.compose-send{flex:none;width:24px;height:24px;border-radius:50%;background:#659c68;color:white;font-size:18px}.compose-send:disabled{opacity:.3}.message-compose{height:auto;min-height:47px}
+.notes-page[contenteditable]{outline:0;overflow:auto;user-select:text;cursor:text;white-space:pre-wrap;touch-action:auto}.notes-page[contenteditable]:focus{box-shadow:inset 0 0 0 1px #cfb76340}
+.browser-toolbar .address-bar{min-width:0;max-width:none;flex:1;cursor:text;font-family:inherit;outline-offset:1px;text-align:center}
+.finder-search{width:105px;min-width:0;font:inherit;font-size:10px;border:1px solid #c4cebc70;background:#ffffff80;border-radius:5px;padding:4px 6px;color:#4c5d43;outline-offset:1px}
+/* Native overlay owns preselection; remove the old whole-container glow. */
+.aiming[data-source] img,.aiming[data-source]>img{filter:drop-shadow(0 3px 3px #243a3526)}
+.aiming[data-source-kind=note] .text-line,.aiming[data-source-kind=note]>.text-line{background:none;box-shadow:none}
+.finder-file.aiming,.address-bar.aiming{background:transparent}.frame-source.aiming:after{display:none}
+#target-glow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:110;overflow:visible;opacity:0;transition:opacity .18s ease-out;--aim-color:#baa6ff}
+#target-glow.visible{opacity:1}#target-glow.visible.moving{opacity:.42;transition-duration:.1s}
+#target-glow .aim-regions{fill:none;stroke:url(#aim-light);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px var(--aim-color)) drop-shadow(0 0 10px color-mix(in srgb,var(--aim-color) 50%,transparent))}
+#target-glow[data-style=link] .aim-regions{stroke-width:2.8}
+#target-glow[data-style=text]{mix-blend-mode:multiply}#target-glow[data-style=text] .aim-regions{fill:rgb(255 199 46 / 46%);stroke:#e68a0aa6;stroke-width:1.3;filter:drop-shadow(0 0 3px #ffe6a6) drop-shadow(0 0 6px #ffe6a680)}
+#target-glow[data-style=text].moving{opacity:.75}#target-glow[data-style=text].moving .aim-regions{fill:rgb(255 199 46 / 22%)}
+#target-glow[data-style=text] .aim-rim{fill:none;stroke:url(#aim-light);stroke-width:1.3}
+@media(prefers-reduced-motion:reduce){.app-dock>button svg,.app-dock>button img,#target-glow{transition:none}}
+.edited-note-text{position:absolute;top:70px;width:224px;height:127px;overflow:hidden;white-space:pre-wrap;text-align:left;overflow-wrap:anywhere;font-size:14px;line-height:21px;font-weight:400;color:#343a37;pointer-events:none}
+.demo-status{bottom:157px}
+body:has(#app-dock:hover) .demo-status,body:has(#app-dock :focus-visible) .demo-status{opacity:0}
