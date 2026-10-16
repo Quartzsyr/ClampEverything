@@ -1,0 +1,13 @@
+{
+  "method": "Unretouched Playwright screenshots of real Option pointer-down, drag and release, native CardSurface sprites and original TXT/PDF/DOCX/PNG files; no generated UI or personal content",
+  "viewport": {
+    "width": 1280,
+    "height": 850
+  },
+  "files": [
+    "text-pickup.webp",
+    "documents.webp",
+    "edge-unfold.webp"
+  ],
+  "reproduce": "Start site/ on localhost:5173, run site/scripts/capture-usage.cjs"
+}

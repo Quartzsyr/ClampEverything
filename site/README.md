@@ -16,7 +16,7 @@
 - 播放器读取真实 MOV / WAV，播放控件和夹取画面分别响应。
 - 拖金属夹移动已夹物件；靠边放置收起，悬停展开。拖到废纸篓可移除夹项，原文件保留；废纸篓中可放回。
 - 点击已夹内容复制，拖出内容可复制到访达或信息。放入信息先成为草稿，点击发送后才进入会话。
-- 没有自动播放或自动夹取。松开 Option 恢复普通鼠标；放下前松开 Option、Esc、右键或窗口失焦会取消当前夹取。一次夹取后需要松开再按 Option 才能重新开始。桌面窗口、Dock 和菜单本身不成为夹取内容。
+- 没有自动播放或自动夹取。松开 Option 恢复普通鼠标；放下前松开 Option、Esc、右键或窗口失焦会取消当前夹取。一次夹取后需要松开再按 Option 才能重新开始。窗口和 Dock 保留原有操作；它们的可见文字也可单独夹成 TXT。
 
 ## 原生素材
 
@@ -99,3 +99,11 @@ HTML 原文件通过 `.html.bin` 二进制副本读取和校验，避免自定�
 新增第三方：`assets/vendor/jszip/` 随包附带 JSZip MIT 与 Pako MIT 许可证，不依赖外部 CDN。JSZip API：[读取现有 ZIP](https://stuk.github.io/jszip/documentation/api_jszip/load_async.html)、[写回 ZIP](https://stuk.github.io/jszip/documentation/api_jszip/generate_async.html)。
 
 旧版本的 photo/video/group PNG 地址暂时保留，供已打开的旧页面继续夹取；当前 manifest 使用更新后的摄影素材与 WebP 预览。
+
+### 全站文字夹取与使用截图
+
+按住 Option / Alt 可以夹取窗口标题、文件名、按钮文字、设置说明、输入框当前内容以及同源内嵌网页正文。先选择一段文字再夹，只提取选区；未选择代码片段时仍夹 Swift 原文件。文字命中和金色逐行预选使用同一识别结果，夹起的原文登记为真实 TXT 文件。PDF 优先读取自身文字层；当前图像型示例的逐行索引由 macOS Vision 从原始 PDF 本地识别，SHA-256 匹配后启用，没有改写 PDF 原件。
+
+下载网页包含三组实际桌面操作截图，素材与取景方法记录于 `assets/usage/provenance.json`。从仓库根目录启动本地预览后，可用 `node site/scripts/capture-usage.cjs` 重新录制；通过 `PLAYWRIGHT_MODULE` 指定 Playwright 路径。PDF 索引可用 `swift site/scripts/extract-pdf-text.swift site/assets/files/旅行手记.pdf site/assets/files/旅行手记.text.json` 更新。
+
+新增浏览器回归：`node site/tests/text-capture.cjs`；可设置 `ENGINE=webkit` 和 `PLAYWRIGHT_BROWSERS_PATH` 检查 WebKit。覆盖正文、选区、内嵌网页、PDF、Word、代码片段、输入框、设置、原文件保留和截图加载。

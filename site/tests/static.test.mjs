@@ -40,3 +40,16 @@ test('project Pages paths and published assets are self contained',async()=>{
  const css=await readFile(new URL('style.css',root),'utf8');assert.match(css,/prefers-reduced-motion:\s*reduce/);
  const js=await readFile(new URL('main.js',root),'utf8');assert.doesNotMatch(js,/function playDemo|function paperPage|class="native-note"/,'no generated document window or scripted capture');
 });
+
+test('usage screenshots are actual recorded interactions and PDF text comes from the matching original',async()=>{
+ const page=await readFile(new URL('assets/files/field-notes.html',root),'utf8');
+ const provenance=JSON.parse(await readFile(new URL('assets/usage/provenance.json',root),'utf8'));
+ assert.match(provenance.method,/real Option/);assert.equal(provenance.files.length,3);
+ for(const name of provenance.files){assert.ok((await stat(new URL('assets/usage/'+name,root))).size>1000);assert.ok(page.includes('../usage/'+name));}
+ assert.match(page,/id="usage-title"/);assert.match(page,/loading="lazy"/);
+ const text=JSON.parse(await readFile(new URL('assets/files/旅行手记.text.json',root),'utf8'));
+ const pdf=await readFile(new URL('assets/files/旅行手记.pdf',root));
+ assert.equal(text.sourceSHA256,createHash('sha256').update(pdf).digest('hex'));
+ assert.equal(text.pages.length,3);assert.equal(text.pages[0][0].text,'旅行手记');
+ for(const line of text.pages.flat()){assert.ok(line.text.trim());assert.ok(line.x>=0&&line.y>=0&&line.width>0&&line.height>0&&line.x+line.width<=1.001&&line.y+line.height<=1.001);}
+});

@@ -18,7 +18,7 @@
   },
   "webFixture": {
     "file": "../files/field-notes.html",
-    "sha256": "58e84e2c67569e657d9a959ccfda3b9a75c75e5ad765a2c6fccaac8bc65f3e93",
+    "sha256": "44ee65c30fad44d19f2342d89401f604b5e095490e9aee83966654dd1ae584e9",
     "method": "WebKit.takeSnapshot and CardSurface; product download page"
   },
   "editableNoteStock": {

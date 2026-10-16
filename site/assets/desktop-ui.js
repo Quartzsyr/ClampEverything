@@ -1,19 +1,25 @@
+import { textTargetAt } from './text-targets.js?v=20261016-text';
 // The native TargetGlow.swift palette, contours and movement/dwell timing.
 export function createTargetGlow({enabled, capturing}) {
   const ns='http://www.w3.org/2000/svg', overlay=document.createElementNS(ns,'svg');
   overlay.id='target-glow';overlay.setAttribute('aria-hidden','true');
   overlay.innerHTML='<defs><linearGradient id="aim-light" x2="1" y2="1"><stop stop-color="var(--aim-color)"/><stop offset=".5" stop-color="#ffffffe6"/><stop offset="1" stop-color="var(--aim-color)" stop-opacity=".75"/></linearGradient></defs><g class="aim-regions"></g>';
   document.body.append(overlay);
-  let target=null,timer,lastX,lastY;
+  let target=null,textTarget=null,timer,lastX,lastY;
   const group=overlay.querySelector('g');
-  function clear(){clearTimeout(timer);target?.classList.remove('aiming');target=null;overlay.classList.remove('visible','moving');group.replaceChildren();lastX=lastY=undefined;}
+  function clear(){clearTimeout(timer);target?.classList.remove('aiming');target=null;textTarget=null;overlay.classList.remove('visible','moving');group.replaceChildren();lastX=lastY=undefined;}
   function draw(){
-    if(!target?.isConnected||!enabled()||capturing()){clear();return;}
-    const kind=target.dataset.sourceKind, text=kind==='note'&&!target.matches('.desktop-file,.finder-file,.message-attachment');
+    if(!enabled()||capturing()){clear();return;}
+    textTarget=textTargetAt(lastX,lastY);
+    const next=textTarget?.element||document.elementFromPoint(lastX,lastY)?.closest('[data-source]');
+    if(next!==target)target?.classList.remove('aiming');target=next;
+    if(!target?.isConnected){clear();return;}
+    const kind=target.dataset.sourceKind, text=!!textTarget||kind==='note'&&!target.matches('.desktop-file,.finder-file,.message-attachment');
     const style=text?'text':kind==='photo'?'image':kind==='web'?'link':kind==='folder'?'folder':'file';
     overlay.dataset.style=style;overlay.style.setProperty('--aim-color',({text:'#ffe6a6',image:'#73d1ff',link:'#66f0c2',folder:'#ffb352',file:'#baa6ff'})[style]);
     let regions=[];
-    if(text){
+    if(textTarget)regions=textTarget.regions;
+    else if(text){
       const root=target.querySelector('.message-lines')||target,walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
       while(walker.nextNode()){
         const node=walker.currentNode;if(!node.textContent.trim())continue;
@@ -30,14 +36,14 @@ export function createTargetGlow({enabled, capturing}) {
       if(!regions.length)regions=[rect];
     }
     // Intersect with the actual scroll viewport instead of glowing through chrome.
-    let clip={left:0,top:38,right:innerWidth,bottom:innerHeight};
+    let clip={left:0,top:0,right:innerWidth,bottom:innerHeight};
     for(let parent=target.parentElement;parent&&parent!==document.body;parent=parent.parentElement){
       if(/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflow)){
         const r=parent.getBoundingClientRect();clip={left:Math.max(clip.left,r.left),top:Math.max(clip.top,r.top),right:Math.min(clip.right,r.right),bottom:Math.min(clip.bottom,r.bottom)};
       }
     }
     group.replaceChildren();
-    for(const rect of regions.slice(0,24)){
+    for(const rect of regions.slice(0,160)){
       const x=Math.max(clip.left,rect.x)-2,y=Math.max(clip.top,rect.y)-2,w=Math.min(clip.right,rect.x+rect.width)-x+2,h=Math.min(clip.bottom,rect.y+rect.height)-y+2;
       if(w<4||h<4)continue;
       const shape=document.createElementNS(ns,style==='file'||style==='link'?'path':'rect');
@@ -53,14 +59,17 @@ export function createTargetGlow({enabled, capturing}) {
   function aimAt(x,y){
     if(!enabled()||capturing()){clear();return;}
     if(x===lastX&&y===lastY)return;lastX=x;lastY=y;
-    const next=document.elementFromPoint(x,y)?.closest('[data-source]');
+    const nextText=textTargetAt(x,y),next=nextText?.element||document.elementFromPoint(x,y)?.closest('[data-source]');
+    const changedText=nextText?.key!==textTarget?.key||nextText?.text!==textTarget?.text;
+    textTarget=nextText;
     clearTimeout(timer);
-    if(next!==target){target?.classList.remove('aiming');target=next;overlay.classList.remove('visible');group.replaceChildren();}
+    if(next!==target||changedText){target?.classList.remove('aiming');target=next;overlay.classList.remove('visible');group.replaceChildren();}
     else if(target)overlay.classList.add('moving');
     if(target)timer=setTimeout(draw,280);
   }
   document.addEventListener('pointermove',e=>aimAt(e.clientX,e.clientY));
   document.addEventListener('scroll',()=>{if(target)draw();},true);
+  window.addEventListener('clamp-frame-scroll',()=>{if(target)draw();});
   window.addEventListener('resize',clear);window.addEventListener('blur',clear);
   return {aimAt,clear};
 }

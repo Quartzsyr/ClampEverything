@@ -1,13 +1,13 @@
-import { createDesktop } from './desktop.js?v=20261016-workspace';
+import { createDesktop } from './desktop.js?v=20261016-text';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
-import { FileLibrary } from './file-library.js?v=20261016-workspace';
+import { FileLibrary } from './file-library.js?v=20261016-text';
 import { HoldGesture } from './hold-gesture.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const nativeBase = new URL('./assets/native/', import.meta.url);
-const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261016-workspace');return url.href;};
+const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261016-text');return url.href;};
 const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
@@ -102,11 +102,17 @@ function endDrag(){
   if(side){d.obj.side=side;d.obj.x=side==='left'?44:innerWidth-44;render(d.obj);setExpanded(d.obj,false);}else render(d.obj);
 }
 function cursorAt(x,y,pose='open'){
-  if(dialog.open||(!gesture.active&&!manual)||(!hasPointer&&!manual)){cursor.hidden=true;return;}
+  if((!gesture.active&&!manual)||(!hasPointer&&!manual)){cursor.hidden=true;return;}
   cursor.hidden=false;cursor.style.transform=`translate(${x-8}px,${y-26}px)`;$('.metal',cursor).src=nativeURL(manifest.cursor?.[pose]||`cursor-${pose}.png`);
 }
 function syncCapture(){
-  document.body.classList.toggle('capture-on',!dialog.open&&(gesture.active||!!manual));
+  let topLayer=$('#capture-visuals');
+  if(!topLayer){topLayer=document.createElement('div');topLayer.id='capture-visuals';topLayer.setAttribute('popover','manual');document.body.append(topLayer);}
+  const overDialog=dialog.open&&(gesture.active||!!manual),visualHost=overDialog?topLayer:document.body;
+  for(const visual of [cursor,$('#target-glow')])if(visual&&visual.parentElement!==visualHost)visualHost.append(visual);
+  if(overDialog&&!topLayer.matches(':popover-open'))topLayer.showPopover();
+  else if(!overDialog&&topLayer.matches(':popover-open'))topLayer.hidePopover();
+  document.body.classList.toggle('capture-on',(gesture.active||!!manual));
   if(!gesture.active)environment?.clearAim();
   else environment?.aimAt(point.x,point.y);
   cursorAt(point.x,point.y,manual?.ready?'closed':'open');
@@ -117,7 +123,7 @@ function stopDemo(announce=true){
   if(announce)status('已取消夹取','松开 Option，再按住即可重新夹取');
 }
 function modifierDown(event){
-  if(event.key==='Alt'&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!dialog.open){event.preventDefault?.();gesture.hold();syncCapture();}
+  if(event.key==='Alt'&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey){event.preventDefault?.();gesture.hold();syncCapture();}
   else if(event.key==='Escape'&&(manual||gesture.active))stopDemo();
   else if(gesture.held&&event.key!=='Alt')stopDemo(false);
 }
@@ -174,16 +180,19 @@ function bindDialogGeometry(){
     else{left=clamp(left+dx,8,Math.max(8,innerWidth-s.width-8));top=clamp(top+dy,44,Math.max(44,innerHeight-s.height-8));right=left+s.width;bottom=top+s.height;}
     Object.assign(dialog.style,{left:`${left}px`,top:`${top}px`,width:`${right-left}px`,height:`${bottom-top}px`});
   });
-  document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',finish);window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
+  document.addEventListener('pointerup',finish);document.addEventListener('pointercancel',finish);dialog.addEventListener('close',()=>{finish();syncCapture();});window.addEventListener('blur',finish);window.addEventListener('resize',()=>{finish();if(!dialog.open)return;const r=dialog.getBoundingClientRect(),width=Math.min(r.width,innerWidth-16),height=Math.min(r.height,innerHeight-60);Object.assign(dialog.style,{margin:'0',width:`${width}px`,height:`${height}px`,left:`${clamp(r.x,8,Math.max(8,innerWidth-width-8))}px`,top:`${clamp(r.y,44,Math.max(44,innerHeight-height-8))}px`});});
 }
 function showSettings(){showDialog('设置',`<div class="setting-row"><label for="motion-setting">播放拟物动画</label><input id="motion-setting" type="checkbox" ${motion?'checked':''}></div><button id="reset-desktop">还原演示桌面与文件</button><p class="reset-note">恢复初始示例，清除本地编辑与废纸篓内容。</p><div class="developer"><h3>开发者信息</h3><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);$('#motion-setting').onchange=e=>{motion=e.target.checked;};$('#reset-desktop').onclick=()=>{dialog.close();layoutInitial();};}
-function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击或 Enter 打开；直接拖动桌面图标可以重新摆放，Esc 取消拖动，位置会在此浏览器保留。文字可以正常选择。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>信息输入框可输入，Enter 发送，Shift+Enter 换行；备忘录可以直接编辑，新文字也可按住 Option 夹取。信息会按内容回复文字、照片、影片或文档，可试着发“照片”“视频”“计划”或“代码”。Word 可编辑正文和格式，代码可直接修改，⌘S 保存并支持下载，刷新后恢复工作文件。图标可拖入废纸篓，⌘⌫ 移入，⌘Z 放回。访达支持搜索文件。Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
+function showHelp(){showDialog('就在桌面上，随手夹取',`<p>平时单击选择文件，双击或 Enter 打开；直接拖动桌面图标可以重新摆放，Esc 取消拖动，位置会在此浏览器保留。文字可以正常选择；按住 Option 可夹取标题、文件名和网页正文，选中一段文字则只夹这一段。按住 ⌥ Option（Windows / Linux 为 Alt），鼠标变成夹子，再按下内容、拖到想放的位置，松开鼠标放置。松开按键恢复普通鼠标。Esc 或右键取消。</p><p>拖金属夹移动整件物件，点金属夹收放。靠近左右边缘放置会收起，悬停再展开。点内容复制，拖出内容可复制到访达。</p><p>信息输入框可输入，Enter 发送，Shift+Enter 换行；备忘录可以直接编辑，新文字也可按住 Option 夹取。信息会按内容回复文字、照片、影片或文档，可试着发“照片”“视频”“计划”或“代码”。Word 可编辑正文和格式，代码可直接修改，⌘S 保存并支持下载，刷新后恢复工作文件。图标可拖入废纸篓，⌘⌫ 移入，⌘Z 放回。访达支持搜索文件。Dock 打开应用；拖动标题栏移动窗口，拖边缘或四角调整大小。设置、帮助和应用信息面板也支持移动与缩放。窗口可以关闭、最小化和缩放。文件右键可打开、快速查看或下载原文件。网页、图片、PDF、Word、音视频、代码和文本均来自专门制作的真实演示文件。</p>`);}
 function layoutInitial(){stopDemo(false);for(const obj of objects.values())obj.el.remove();objects.clear();environment?.reset();}
 function bind(){
   bindDialogGeometry();
+  // A consumed hold still owns the corresponding click, including links and
+  // direct button handlers. Capturing their label must never activate them.
+  document.addEventListener('click',event=>{if(event.altKey||gesture.held||manual){event.preventDefault();event.stopImmediatePropagation();}},true);
   document.addEventListener('click',event=>{if(event.altKey||gesture.active||manual)return;const action=event.target.closest('[data-action]')?.dataset.action;
     if(action==='about')showAbout();if(action==='settings')showSettings();if(action==='help')showHelp();if(action==='finder')environment.openFinder();if(action==='edit')environment.pasteFile();if(action==='windows')environment.showWindowMenu();});
-  document.addEventListener('pointermove',event=>{hasPointer=true;point.x=event.clientX;point.y=event.clientY;moveDrag(event);if(dialog.open){cursor.hidden=true;return;}if(manual?.ready)cursorAt(event.clientX,event.clientY,'closed');else if(!manual)cursorAt(event.clientX,event.clientY);});
+  document.addEventListener('pointermove',event=>{hasPointer=true;point.x=event.clientX;point.y=event.clientY;moveDrag(event);if(manual?.ready)cursorAt(event.clientX,event.clientY,'closed');else if(!manual)cursorAt(event.clientX,event.clientY);});
   document.addEventListener('pointerup',event=>{endDrag();if(manual&&gesture.release()){manual.released=true;manual.destination={x:event.clientX,y:event.clientY};if(manual.ready)finishManual();}});
   document.addEventListener('pointercancel',()=>{dragging=null;stopDemo(false);gesture.unhold();syncCapture();});
   document.addEventListener('keydown',modifierDown);document.addEventListener('keyup',modifierUp);
