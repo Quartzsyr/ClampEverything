@@ -62,3 +62,5 @@ npm run preview
 GitHub Actions 发布静态页面、JS 和 assets；测试与原生导出参考代码不进入部署包。
 
 第三方：`assets/vendor/pdfjs/` 保留 PDF.js 原始 Apache-2.0 许可证；运行时不请求 CDN。
+
+当前下载按钮直达 [v1.7.16 arm64 DMG](https://github.com/Quartzsyr/ClampEverything/releases/download/v1.7.16/ClampEverything-1.7.16-arm64.dmg)，同一窗口提供详细 Release 说明、SHA-256 和开发签名状态。

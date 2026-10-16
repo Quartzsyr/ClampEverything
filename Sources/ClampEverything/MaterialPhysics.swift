@@ -27,12 +27,13 @@ struct PocketFront: Shape {
 struct GripContact: View {
     var material: PhysicalMaterial
     var isLeft: Bool
+    var depth: CGFloat = ClipOrientation.insertion
     var body: some View {
-        Ellipse().fill(.black.opacity(0.13 + material.jawOpening * 0.2))
-            .frame(width: 18, height: 5 + material.jawOpening * 8).blur(radius: 2)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isLeft ? .topLeading : .topTrailing)
-            .padding(.top, 18).padding(isLeft ? .leading : .trailing, isLeft ? 28 : 4)
-            .allowsHitTesting(false)
+        GeometryReader { geometry in
+            Ellipse().fill(.black.opacity(0.12))
+                .frame(width: 14, height: 3 + material.jawOpening * 3).blur(radius: 1.3)
+                .position(x: isLeft ? 29 : geometry.size.width - 29, y: depth)
+        }.allowsHitTesting(false)
     }
 }
 struct RigidGripEffect: GeometryEffect {

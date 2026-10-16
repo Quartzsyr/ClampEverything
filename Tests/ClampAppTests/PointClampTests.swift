@@ -31,9 +31,9 @@ import Testing
     }
 
     @Test func heightRoundTripsAndStaysVisible() {
-        for y: CGFloat in [52, 200, 470, 868] {
+        for y: CGFloat in [60, 200, 470, 860] {
             let stored = DockGeometry.height(at: y, in: frame)
-            #expect(abs(DockGeometry.originY(height: stored, index: 0, in: frame) + 22 - y) < 0.001)
+            #expect(abs(DockGeometry.originY(height: stored, index: 0, in: frame) + DockGeometry.compactSize.height / 2 - y) < 0.001)
         }
         #expect(DockGeometry.height(at: -1000, in: frame) == 0)
         #expect(DockGeometry.height(at: 2000, in: frame) == 1)
@@ -43,8 +43,8 @@ import Testing
         for heights: [Double?] in [[0, 0, 0], [1, 1, 1], [nil, 0.9, 0.9, nil]] {
             let origins = DockGeometry.origins(heights: heights, in: frame).sorted()
             #expect(origins.first! >= frame.minY)
-            #expect(origins.last! + 44 <= frame.maxY)
-            for pair in zip(origins, origins.dropFirst()) { #expect(pair.1 - pair.0 >= 52) }
+            #expect(origins.last! + DockGeometry.compactSize.height <= frame.maxY)
+            for pair in zip(origins, origins.dropFirst()) { #expect(pair.1 - pair.0 >= DockGeometry.spacing) }
         }
     }
 }

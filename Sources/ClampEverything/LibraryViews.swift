@@ -169,13 +169,19 @@ struct SettingsView: View {
                 MetalClip(receiver: true).rotationEffect(.degrees(-12)).padding(.top, 18).padding(.bottom, 8)
                 Text("屏幕夹子").font(.system(size: 20, weight: .semibold))
                 Text("留一点空间，\n给手边的东西。").font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(5).padding(.bottom, 26)
+                ScrollView {
+                    VStack(spacing: 7) {
                 navigation("使用习惯", symbol: "slider.horizontal.3")
                 navigation("鼠标夹取", symbol: "cursorarrow.click")
+                navigation("内容大小", symbol: "arrow.up.left.and.arrow.down.right")
                 navigation("夹子与材质", symbol: "sparkles")
                 navigation("能夹什么", symbol: "square.stack.3d.up")
                 navigation("工作场景", symbol: "rectangle.3.group")
                 navigation("资料与恢复", symbol: "arrow.uturn.backward")
-                Spacer()
+                navigation("开发者信息", symbol: "person.crop.circle")
+                    }
+                }.scrollIndicators(.hidden)
+                Spacer(minLength: 0)
                 Text("只在需要时打开设置").font(.system(size: 10)).foregroundStyle(.tertiary)
             }.frame(width: 150).padding(20)
             VStack(alignment: .leading, spacing: 20) {
@@ -186,9 +192,11 @@ struct SettingsView: View {
                 }
                 if section == "使用习惯" { habits }
                 else if section == "鼠标夹取" { HoldSettingsView(store: store, controller: manager.pointClamp) }
+                else if section == "内容大小" { previewSizes }
                 else if section == "夹子与材质" { materials }
                 else if section == "能夹什么" { ScrollView { MaterialCatalogView(store: store).padding(.trailing, 6) } }
                 else if section == "工作场景" { SceneSettingsView(store: store) }
+                else if section == "开发者信息" { developerInfo }
                 else { storage }
                 Spacer(minLength: 0)
             }.padding(.vertical, 30).padding(.trailing, 28).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -212,10 +220,30 @@ struct SettingsView: View {
             store.changed(immediate: true)
         })
     }
+    var developerInfo: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Quartz").font(.system(size: 22, weight: .semibold))
+                Text("UESTC").font(.system(size: 13)).foregroundStyle(.secondary)
+            }
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                Text("联系邮箱").font(.system(size: 12)).foregroundStyle(.secondary)
+                Link("SYRQuartz@gmail.com", destination: URL(string: "mailto:SYRQuartz@gmail.com")!)
+                    .font(.system(size: 14))
+                    .help("使用邮件应用联系开发者")
+            }
+        }
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
     var habits: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("调整夹子的停靠与展开方式，修改后立即生效。").font(.system(size: 12)).foregroundStyle(.secondary)
+                Toggle("显示黄铜接收夹", isOn: preference(\.showBrassClip))
+                Text("屏幕右上角的添加入口，默认关闭；关闭后仍可从菜单栏添加内容。")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
                 Toggle("全屏时隐藏夹子", isOn: Binding(get: { store.state.preferences.hideInFullScreen }, set: { store.state.preferences.hideInFullScreen = $0; store.changed(immediate: true); manager.detectFullScreen() }))
                 Toggle("显示文件夹里的隐藏文件", isOn: preference(\.showHiddenFiles))
                 Picker("新夹子默认停靠", selection: preference(\.defaultSide)) {
@@ -245,6 +273,7 @@ struct SettingsView: View {
                     Spacer()
                     Button("恢复交互默认值") {
                         let defaults = AppPreferences()
+                        store.state.preferences.showBrassClip = defaults.showBrassClip
                         store.state.preferences.autoSnap = defaults.autoSnap
                         store.state.preferences.snapDistance = defaults.snapDistance
                         store.state.preferences.hoverToExpand = defaults.hoverToExpand
@@ -261,6 +290,26 @@ struct SettingsView: View {
             HStack { Text(title); Spacer(); Text(label).monospacedDigit().foregroundStyle(.secondary) }
             Slider(value: value, in: range).accessibilityLabel(title)
         }.font(.system(size: 11))
+    }
+    var previewSizes: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("分别调整每种内容展开后的大小，立即生效并自动保存。PDF 和文稿默认已放大；夹子的金属部分保持原有大小。")
+                    .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                ForEach(PreviewSizeKind.allCases, id: \.self) { kind in
+                    settingSlider(kind.title, value: Binding(
+                        get: { store.state.preferences.previewSizes[kind] },
+                        set: { store.state.preferences.previewSizes[kind] = $0; store.changed(immediate: true) }),
+                        range: PreviewSizes.range,
+                        label: String(format: "%.0f%%", store.state.preferences.previewSizes[kind] * 100))
+                }
+                Text("65%–180% · 保留图片和纸页比例，超出屏幕时自动缩小。仅调整展开的内容，侧边缩略图保持统一。")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                Button("恢复全部内容默认大小") {
+                    store.state.preferences.previewSizes = PreviewSizes(); store.changed(immediate: true)
+                }.controlSize(.small)
+            }.padding(.trailing, 6)
+        }
     }
     var materials: some View {
         ScrollView {

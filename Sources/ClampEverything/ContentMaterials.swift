@@ -26,8 +26,8 @@ struct FolderSilhouette: Shape {
         path.move(to: CGPoint(x: r, y: tab))
         path.addLine(to: CGPoint(x: w * 0.10, y: tab))
         path.addQuadCurve(to: CGPoint(x: w * 0.14, y: 0), control: CGPoint(x: w * 0.11, y: 0))
-        path.addLine(to: CGPoint(x: w * 0.52, y: 0))
-        path.addQuadCurve(to: CGPoint(x: w * 0.59, y: tab), control: CGPoint(x: w * 0.56, y: 0))
+        path.addLine(to: CGPoint(x: w * 0.39, y: 0))
+        path.addQuadCurve(to: CGPoint(x: w * 0.46, y: tab), control: CGPoint(x: w * 0.43, y: 0))
         path.addLine(to: CGPoint(x: w - r, y: tab))
         path.addQuadCurve(to: CGPoint(x: w, y: tab + r), control: CGPoint(x: w, y: tab))
         path.addLine(to: CGPoint(x: w, y: h - r))
@@ -55,45 +55,38 @@ struct FolderMaterial: View {
             let compact = geometry.size.width < 100
             let tabHeight: CGFloat = compact ? 5 : 24
             ZStack(alignment: .topLeading) {
-                FolderSilhouette().fill(LinearGradient(colors: [tint.base, tint.base.opacity(0.88)], startPoint: .top, endPoint: .bottom))
-                RoundedRectangle(cornerRadius: compact ? 2 : 8)
-                    .fill(Color.white.opacity(0.34)).padding(.horizontal, compact ? 3 : 10)
-                    .padding(.top, tabHeight + (compact ? 2 : 7)).padding(.bottom, compact ? 3 : 12)
-                    .shadow(color: .black.opacity(0.13), radius: 2, y: -1)
-                if !compact {
-                    ForEach(0..<min(4, max(1, layers)), id: \.self) { layer in
-                        RoundedRectangle(cornerRadius: 5).fill(Color(white: 0.96 - Double(layer) * 0.035))
-                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(.black.opacity(0.08), lineWidth: 0.5))
-                            .padding(.horizontal, 13 + CGFloat(layer) * 2)
-                            .padding(.top, 40 - PocketGeometry.amount(opening) * 12 + CGFloat(layer) * PocketGeometry.mouthGap(opening) * 0.5)
-                            .padding(.bottom, 9)
-                            .offset(x: dragPull.x * CGFloat(layer + 1) * 1.5, y: dragPull.y * CGFloat(layer + 1) * 1.2)
+                FolderSilhouette().fill(tint.face)
+                    .overlay(FolderSilhouette().fill(LinearGradient(colors: [.white.opacity(0.08), .black.opacity(0.015)], startPoint: .top, endPoint: .bottom)))
+                if compact {
+                    RoundedRectangle(cornerRadius: 2).fill(.white.opacity(0.75))
+                        .padding(.horizontal, 3).padding(.top, tabHeight + 2).padding(.bottom, 3)
+                    PocketFront(opening: 0)
+                        .fill(LinearGradient(colors: [tint.face, tint.base.opacity(0.85)], startPoint: .top, endPoint: .bottom))
+                } else {
+                    // A thin matte sleeve around one warm-white sheet, with a shallow folded lip.
+                    RoundedRectangle(cornerRadius: 3).fill(Color(red: 0.993, green: 0.990, blue: 0.978))
+                        .shadow(color: .black.opacity(0.10), radius: 1, y: 0.5)
+                        .padding(.horizontal, 4).padding(.top, tabHeight + 6).padding(.bottom, 10)
+                    UnevenRoundedRectangle(topLeadingRadius: 1, bottomLeadingRadius: 8, bottomTrailingRadius: 8, topTrailingRadius: 1)
+                        .fill(tint.face)
+                        .overlay(alignment: .top) { Rectangle().fill(tint.base.opacity(0.26)).frame(height: 0.5) }
+                        .frame(height: 9 + PocketGeometry.mouthGap(opening) * 0.25 + abs(dragPull.y) * 0.8)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                    Canvas { context, size in
+                        var crease = Path()
+                        crease.move(to: CGPoint(x: 12, y: size.height - 5))
+                        crease.addLine(to: CGPoint(x: size.width - 12, y: size.height - 5))
+                        context.stroke(crease, with: .color(tint.base.opacity(0.20)), lineWidth: 0.5)
                     }
-                }
-                PocketFront(opening: compact ? 0 : opening - abs(dragPull.x) * 0.3 + dragPull.y * 0.2)
-                    .fill(LinearGradient(colors: [tint.face, tint.face.opacity(0.98), tint.base.opacity(0.82)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .overlay(PocketFront(opening: compact ? 0 : opening - abs(dragPull.x) * 0.3 + dragPull.y * 0.2).stroke(.white.opacity(0.45), lineWidth: 0.7))
-                    .shadow(color: .black.opacity(0.16), radius: compact ? 1 : 1 + PocketGeometry.mouthGap(opening) * 0.25, y: -2)
-                    .overlay(alignment: .bottom) {
-                        VStack(spacing: 3) {
-                            ForEach(0..<3) { _ in Capsule().fill(.black.opacity(0.045)).frame(height: 1).shadow(color: .white.opacity(0.6), radius: 0, y: 1) }
-                        }.padding(.horizontal, compact ? 4 : 15).padding(.bottom, compact ? 3 : 12)
-                    }
-                if !compact {
-                    Text(title).font(.system(size: 10, weight: .semibold)).lineLimit(1)
-                        .foregroundStyle(Color.black.opacity(0.65))
-                        .padding(.horizontal, 10).frame(width: geometry.size.width * 0.43, height: 23)
-                        .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
-                        .offset(x: geometry.size.width * 0.13, y: 1)
-                }
-                Canvas { context, size in
-                    for x in stride(from: 4.0, to: size.width, by: 4) {
-                        var line = Path(); line.move(to: CGPoint(x: x, y: tabHeight + 20)); line.addLine(to: CGPoint(x: x, y: size.height))
-                        context.stroke(line, with: .color(.brown.opacity(0.025)), lineWidth: 0.4)
+                    if !title.isEmpty {
+                        Text(title).font(.system(size: 10, weight: .medium)).lineLimit(1)
+                            .foregroundStyle(Color.black.opacity(0.60))
+                            .frame(width: geometry.size.width * 0.38, height: 22, alignment: .leading)
+                            .offset(x: geometry.size.width * 0.15, y: 1)
                     }
                 }
             }.clipShape(FolderSilhouette())
-                .overlay(FolderSilhouette().stroke(.black.opacity(0.18), lineWidth: 0.8))
+                .overlay(FolderSilhouette().stroke(tint.base.opacity(0.40), lineWidth: 0.6))
         }.allowsHitTesting(false)
             .animation(reduceMotion || motionDisabled ? nil : .spring(response: 0.55, dampingFraction: 0.65), value: dragPull)
     }

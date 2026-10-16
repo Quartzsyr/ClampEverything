@@ -18,6 +18,15 @@ final class FloatingPanel: NSPanel {
     @Published var expanded = false
     @Published var revealProgress: CGFloat = 0
     @Published var sheetSize = CGSize.zero
+    @Published private(set) var documentTurning = false
+    var pageTurnInset: CGFloat {
+        documentTurning && expanded ? LeftBindingPageGeometry.drawingOutset(height: max(0, sheetSize.height - ClipOrientation.verticalMargins)) + 20 : 0
+    }
+    var pageTurnSideInset: CGFloat { documentTurning && expanded ? ceil(sheetSize.width * 0.055 + 20) : 0 }
+    func documentTurn(_ active: Bool) {
+        guard !retired, documentTurning != active else { return }
+        documentTurning = active; manager?.layout(self)
+    }
     var revealInFlight = false
     var sticky = false
     var busy = false
@@ -45,11 +54,16 @@ final class FloatingPanel: NSPanel {
         // Resizing a window synthesizes exit/enter events; only a genuine exit
         // from the current hit area may rearm a deliberately closed clip.
         if !inside && !panel.frame.contains(NSEvent.mouseLocation) { hoverSuppressed = false }
+        if inside && manager?.hoverExpansionBlocked == true { hoverSuppressed = true; return }
         if inside && (hoverSuppressed || manager?.store.state.preferences.hoverToExpand == false) { return }
         if busy || moving || manager?.menuTracking == true { return }
         let work = DispatchWorkItem { [weak self] in
             guard let self, !self.retired, !self.busy, !self.moving, !(inside && self.hoverSuppressed), self.manager?.menuTracking != true else { return }
-            if inside { guard self.manager?.store.state.preferences.hoverToExpand != false else { return }; self.present() }
+            if inside {
+                guard self.manager?.hoverExpansionBlocked != true else { self.hoverSuppressed = true; return }
+                guard self.manager?.store.state.preferences.hoverToExpand != false else { return }
+                self.present()
+            }
             else if !self.sticky && self.manager?.placement(self.id)?.mode != .floating { self.dismiss() }
         }
         hoverWork = work; DispatchQueue.main.asyncAfter(deadline: .now() + (inside ? (manager?.store.state.preferences.hoverDelay ?? 0.35) : 0.45), execute: work)
@@ -109,7 +123,7 @@ final class FloatingPanel: NSPanel {
     private func cancelReveal() { revealGeneration += 1; revealWork?.cancel(); revealWork = nil }
     func retire() {
         retired = true; dragSettleWork?.cancel(); hoverWork?.cancel(); hoverWork = nil; cancelReveal()
-        revealInFlight = false; paperPull = .resting
+        revealInFlight = false; documentTurning = false; paperPull = .resting
         manager = nil; panel.orderOut(nil)
         // Break CardModel → panel → hosting view → CardModel retention.
         panel.contentView = nil
@@ -123,13 +137,18 @@ final class FloatingPanel: NSPanel {
     }
     func beginMove() {
         guard !retired else { return }
+        if documentTurning { documentTurning = false; manager?.layout(self) }
+        let wasWide = expanded || manager?.placement(id)?.mode == .floating
         hoverWork?.cancel(); cancelReveal()
-        hoverSuppressed = false; revealInFlight = false; busy = true; expanded = true; revealProgress = 1; sticky = true
+        hoverSuppressed = true; revealInFlight = false; busy = true; expanded = wasWide; revealProgress = wasWide ? 1 : 0; sticky = true
         let previous = panel.frame
         manager?.layout(self)
         moving = true
-        if manager?.placement(id)?.side == .left { panel.setFrameOrigin(NSPoint(x: previous.minX, y: previous.maxY - panel.frame.height)) }
-        else { panel.setFrameOrigin(NSPoint(x: previous.maxX - panel.frame.width, y: previous.maxY - panel.frame.height)) }
+        let left = manager?.placement(id)?.side == .left
+        let lift = wasWide ? CGFloat(0) : HingeReveal.suspension(size: panel.frame.size, isLeft: left).y - ClipOrientation.compactHookY
+        let slide = wasWide ? CGFloat(0) : HingeReveal.translation(progress: 0, isLeft: left).width
+        if left { panel.setFrameOrigin(NSPoint(x: previous.minX + slide, y: previous.maxY + lift - panel.frame.height)) }
+        else { panel.setFrameOrigin(NSPoint(x: previous.maxX + slide - panel.frame.width, y: previous.maxY + lift - panel.frame.height)) }
         dragOrigin = panel.frame
         dragSettleWork?.cancel(); dragResting = false
         dragSampler.reset(at: ProcessInfo.processInfo.systemUptime)
@@ -171,14 +190,14 @@ final class FloatingPanel: NSPanel {
     var settingsWindow: NSWindow?
     var editors: [UUID: NSWindow] = [:]
     var menuTracking = false
-    private let guidePanel = FloatingPanel()
+    private(set) var guidePlayback: GuidePlayback?
+    private(set) var guideExamples: GuideExamples?
+    let guidePanel = ClipGuidePanel()
     private let snapPreview = FloatingPanel()
     private var mergeCandidate: UUID?
     private var mergeSource: UUID?
     private var mergeWork: DispatchWorkItem?
-    private var guideDismiss: DispatchWorkItem?
     private var guideScreenID: String?
-    private var guideGeneration = 0
     private var observers: [NSObjectProtocol] = []
     private var monitors: [Any] = []
     private var fullScreenTimer: Timer?
@@ -188,6 +207,10 @@ final class FloatingPanel: NSPanel {
         self.store = store; pointClamp = PointClampController(store: store); super.init()
         store.onChange = { [weak self] in self?.pointClamp.refreshConfiguration(); self?.sync() }
         store.onReveal = { [weak self] id in self?.reveal(id) }
+        store.onThumbnailChange = { [weak self] id in
+            guard let self, let card = self.cards[id], card.expanded, !card.moving, !card.revealInFlight else { return }
+            self.layout(card)
+        }
         pointClamp.onPlace = { [weak self] id, point in self?.placeCaptured(id, at: point) }
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.store.reconcileScreens(); self?.sync() } })
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.detectFullScreen(); self?.sync() } })
@@ -205,7 +228,12 @@ final class FloatingPanel: NSPanel {
         fullScreenTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in Task { @MainActor in self?.detectFullScreen() } }
         store.reconcileScreens(); sync(); detectFullScreen()
     }
-    var compactWidth: CGFloat { 64 }
+    var hoverExpansionBlocked: Bool {
+        HoverExpansionGate.blocks(mouseButtons: NSEvent.pressedMouseButtons,
+                                  materialMoving: cards.values.contains { $0.moving || $0.busy },
+                                  pointClamping: pointClamp.blocksHoverExpansion)
+    }
+    var compactWidth: CGFloat { DockGeometry.compactSize.width }
     func placement(_ id: UUID) -> ClipPlacement? {
         if let item = store.item(id) { return item.removedAt == nil ? item.placement : nil }
         return store.group(id)?.placement
@@ -231,14 +259,18 @@ final class FloatingPanel: NSPanel {
         var visible: Set<UUID> = []
         for screen in NSScreen.screens {
             let frame = NSRect(x: screen.frame.minX, y: screen.visibleFrame.minY + 12, width: screen.frame.width, height: screen.visibleFrame.height - 24)
-            let capacity = max(1, Int((frame.height - 130) / 52))
+            let capacity = max(1, Int((frame.height - 130) / DockGeometry.spacing))
             let right = dockedIDs(on: screen, side: .right), left = dockedIDs(on: screen, side: .left)
             let overflow = max(0, right.count - capacity) + max(0, left.count - capacity)
             let rail = rails[screen.stableID] ?? FloatingPanel()
             rails[screen.stableID] = rail
-            rail.contentView = NSHostingView(rootView: RailView(store: store, manager: self, overflow: overflow))
-            rail.setFrame(NSRect(x: frame.maxX - 58, y: frame.maxY - 50, width: 58, height: 44), display: true)
-            if shouldShow(on: screen) || guideScreenID == screen.stableID { rail.orderFrontRegardless() } else { rail.orderOut(nil) }
+            if store.state.preferences.showBrassClip {
+                rail.contentView = NSHostingView(rootView: RailView(store: store, manager: self, overflow: overflow))
+                rail.setFrame(NSRect(x: frame.maxX - 58, y: frame.maxY - 50, width: 58, height: 44), display: true)
+                if shouldShow(on: screen) || guideScreenID == screen.stableID { rail.orderFrontRegardless() } else { rail.orderOut(nil) }
+            } else {
+                rail.orderOut(nil); rail.contentView = nil
+            }
             for side in [ClipSide.left, .right] {
                 let ids = side == .left ? left : right
                 let shown = Array(ids.prefix(capacity))
@@ -246,7 +278,7 @@ final class FloatingPanel: NSPanel {
                 for (index, id) in shown.enumerated() {
                     visible.insert(id)
                     let card = model(id)
-                    card.slot = NSRect(x: side == .left ? frame.minX : frame.maxX - compactWidth, y: origins[index], width: compactWidth, height: 44)
+                    card.slot = NSRect(x: side == .left ? frame.minX : frame.maxX - compactWidth, y: origins[index], width: compactWidth, height: DockGeometry.compactSize.height)
                     layout(card)
                 }
             }
@@ -271,11 +303,13 @@ final class FloatingPanel: NSPanel {
         if floating && !card.expanded { card.expanded = true; card.revealProgress = 1 }
         let wide = floating || card.expanded
         var width = min(usable.width, wide ? CGFloat(placement.width) : compactWidth)
-        var height = min(usable.height, wide ? CGFloat(placement.height) : 44)
-        if wide, store.item(card.id)?.kind == .image, let image = store.images[card.id], image.size.width > 0, image.size.height > 0 {
-            let fit = min(max(1, width - 24) / image.size.width, max(1, height - 18) / image.size.height)
-            width = image.size.width * fit + 24
-            height = image.size.height * fit + 18
+        var height = min(usable.height, wide ? CGFloat(placement.height) : DockGeometry.compactSize.height)
+        if wide {
+            let fitted = MinimalSurfaceLayout.sheetSize(item: store.item(card.id), imageSize: store.images[card.id]?.size,
+                                                        limit: CGSize(width: width, height: height),
+                                                        scale: store.state.preferences.previewSizes[PreviewSizeKind.forItem(store.item(card.id))],
+                                                        maximumSize: usable.size)
+            width = fitted.width; height = fitted.height
         }
         let sheetSize = CGSize(width: width, height: height)
         if card.sheetSize != sheetSize { card.sheetSize = sheetSize }
@@ -283,9 +317,17 @@ final class FloatingPanel: NSPanel {
         if floating {
             origin = NSPoint(x: usable.minX + CGFloat(placement.position.x) * max(0, usable.width - width), y: usable.minY + CGFloat(placement.position.y) * max(0, usable.height - height))
         } else {
-            origin = NSPoint(x: placement.side == .left ? usable.minX : usable.maxX - width, y: min(usable.maxY - height, max(usable.minY, card.slot.maxY - height)))
+            let lift = wide ? HingeReveal.suspension(size: sheetSize, isLeft: placement.side == .left).y - ClipOrientation.compactHookY : 0
+            origin = NSPoint(x: placement.side == .left ? usable.minX : usable.maxX - width,
+                             y: min(usable.maxY - height, max(usable.minY, card.slot.maxY + lift - height)))
         }
         var frame = NSRect(origin: origin, size: sheetSize)
+        // The page lifts beyond its resting outline. Grow transparent space
+        // around it while keeping the sheet and clip at the same screen point.
+        let turnInset = card.pageTurnInset
+        frame.origin.y -= turnInset; frame.size.height += turnInset * 2
+        let sideInset = card.pageTurnSideInset
+        frame.origin.x -= sideInset; frame.size.width += sideInset * 2
         if wide && !floating && card.revealInFlight {
             // Extend only below the fixed sheet. The top and jaw stay in place.
             let extra = HingeReveal.swingHeight(size: sheetSize, isLeft: placement.side == .left) - height
@@ -330,6 +372,16 @@ final class FloatingPanel: NSPanel {
         let preferences = store.state.preferences
         let side = preferences.autoSnap ? DockGeometry.side(at: point, in: usable, distance: preferences.snapDistance) : nil
         let left = side == .left, right = side == .right
+        if side == nil && !card.expanded {
+            // Keep a compact clip compact while dragging along the edge. Only
+            // unfold after a floating drop, preserving its suspension point.
+            let previous = card.panel.frame
+            let wasLeft = placement(card.id)?.side == .left
+            card.expanded = true; card.revealProgress = 1
+            layout(card)
+            card.panel.setFrameOrigin(NSPoint(x: wasLeft ? previous.minX : previous.maxX - card.panel.frame.width,
+                                               y: previous.maxY - card.panel.frame.height))
+        }
         updatePlacement(card.id) { placement in
             placement.userMoved(to: ScreenPosition(screenID: screen.stableID,
                 x: Double(min(1, max(0, (card.panel.frame.minX - usable.minX) / max(1, usable.width - card.panel.frame.width)))),
@@ -355,8 +407,8 @@ final class FloatingPanel: NSPanel {
         let side = preferences.autoSnap ? DockGeometry.side(at: point, in: usable, distance: preferences.snapDistance) : nil
         updatePlacement(id) { placement in
             placement.userMoved(to: ScreenPosition(screenID: screen.stableID,
-                x: Double(max(0, min(1, (point.x - usable.minX - CGFloat(placement.width) + 26) / max(1, usable.width - CGFloat(placement.width))))),
-                y: Double(max(0, min(1, (point.y - usable.minY - CGFloat(placement.height) + 30) / max(1, usable.height - CGFloat(placement.height)))))))
+                x: Double(max(0, min(1, (point.x - usable.minX - CGFloat(placement.width) + ClipOrientation.edgeAnchor) / max(1, usable.width - CGFloat(placement.width))))),
+                y: Double(max(0, min(1, (point.y - usable.minY - CGFloat(placement.height) + ClipOrientation.contactY) / max(1, usable.height - CGFloat(placement.height)))))))
             placement.mode = side == nil ? .floating : .docked
             if let side { placement.side = side; placement.dockHeight = DockGeometry.height(at: point.y, in: usable) }
         }
@@ -367,8 +419,9 @@ final class FloatingPanel: NSPanel {
     }
     func outsideClick() {
         guard !menuTracking else { return }
-        dismissGuide()
         let point = NSEvent.mouseLocation
+        if guidePanel.isVisible && guidePanel.frame.contains(point) { return }
+        dismissGuide()
         for card in cards.values where !card.panel.frame.contains(point) && placement(card.id)?.mode == .docked && !card.busy && !card.moving { card.close() }
     }
     func closeDockedCards() {
@@ -376,30 +429,26 @@ final class FloatingPanel: NSPanel {
         for card in cards.values where placement(card.id)?.mode == .docked { card.close() }
     }
     func showGuide() {
-        settingsWindow?.close()
+        dismissGuide(); settingsWindow?.close()
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else { return }
         guideScreenID = screen.stableID; store.hidden = false; sync()
-        guard let rail = rails[screen.stableID] else { return }
-        guideDismiss?.cancel()
-        guideGeneration += 1
-        guidePanel.ignoresMouseEvents = true
-        guidePanel.title = "夹子使用指引"
-        guidePanel.contentView = NSHostingView(rootView: ClipGuideView(includeClip: false))
-        let size = ClipGuideView.size, anchor = ClipGuideView.anchor
-        guidePanel.setFrame(NSRect(x: rail.frame.midX - anchor.x,
-            y: rail.frame.midY - (size.height - anchor.y), width: size.width, height: size.height), display: true)
-        guidePanel.orderFrontRegardless()
-        // The actual receiver remains usable through this mouse-transparent guide.
-        let generation = guideGeneration
-        let work = DispatchWorkItem { [weak self] in
-            guard let self, self.guideGeneration == generation else { return }
-            self.dismissGuide()
-        }
-        guideDismiss = work; DispatchQueue.main.asyncAfter(deadline: .now() + 14, execute: work)
+        let playback = GuidePlayback(), examples = GuideExamples()
+        guidePlayback = playback; guideExamples = examples
+        guidePanel.title = "屏幕夹子 · 动态使用指引"
+        let size = ClipGuideView.size
+        let scale = min(1, min((screen.visibleFrame.width - 32) / size.width, (screen.visibleFrame.height - 32) / size.height))
+        guidePanel.contentView = NSHostingView(rootView: ClipGuideView(playback: playback, examples: examples,
+            preferences: store.state.preferences, close: { [weak self] in self?.dismissGuide() })
+            .scaleEffect(scale).frame(width: size.width * scale, height: size.height * scale))
+        guidePanel.setFrame(NSRect(x: screen.visibleFrame.midX - size.width * scale / 2,
+            y: screen.visibleFrame.midY - size.height * scale / 2, width: size.width * scale, height: size.height * scale), display: true)
+        NSApp.activate(ignoringOtherApps: true); guidePanel.makeKeyAndOrderFront(nil)
+        playback.play()
     }
     func dismissGuide() {
         if let id = guideScreenID, blockedScreens.contains(id) || store.hidden { rails[id]?.orderOut(nil) }
-        guideGeneration += 1; guideScreenID = nil; guideDismiss?.cancel(); guideDismiss = nil; guidePanel.orderOut(nil)
+        guidePlayback?.pause(); guidePlayback = nil; guideExamples = nil
+        guideScreenID = nil; guidePanel.orderOut(nil); guidePanel.contentView = nil
     }
     func toggleVisibility() { store.hidden.toggle(); sync() }
     func showLibrary() {
@@ -441,7 +490,7 @@ final class FloatingPanel: NSPanel {
             .overlay(Text("松手吸附").font(.system(size: 10)).foregroundStyle(.white)).padding(2))
         }
         snapPreview.setFrame(NSRect(x: side == .left ? frame.minX : frame.maxX - compactWidth,
-            y: DockGeometry.originY(height: DockGeometry.height(at: point.y, in: frame), index: 0, in: frame), width: compactWidth, height: 44), display: true)
+            y: DockGeometry.originY(height: DockGeometry.height(at: point.y, in: frame), index: 0, in: frame), width: compactWidth, height: DockGeometry.compactSize.height), display: true)
         if !snapPreview.isVisible { snapPreview.orderFrontRegardless() }
     }
     func hideSnapPreview() { if snapPreview.isVisible { snapPreview.orderOut(nil) } }

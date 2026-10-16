@@ -10,12 +10,16 @@ struct LibraryDropZone: NSViewRepresentable {
     @ObservedObject var store: ClipStore
     var highlighted: (Bool) -> Void = { _ in }
     var click: () -> Void = {}
+    var beginMove: () -> Void = {}
+    var move: (NSPoint) -> Void = { _ in }
+    var endMove: () -> Void = {}
     func makeNSView(context: Context) -> LibraryDropView { let view = LibraryDropView(); configure(view); return view }
     func updateNSView(_ view: LibraryDropView, context: Context) { configure(view) }
     private func configure(_ view: LibraryDropView) {
         view.accepts = { store.canCombine($0, with: destination) }
         view.receive = { _ = store.combine($0, with: destination) }
         view.highlighted = highlighted; view.clickAction = click
+        view.beginMove = beginMove; view.move = move; view.endMove = endMove
     }
 }
 
@@ -24,7 +28,27 @@ final class LibraryDropView: NSView {
     var receive: (UUID) -> Void = { _ in }
     var highlighted: (Bool) -> Void = { _ in }
     var clickAction: () -> Void = {}
-    override func mouseUp(with event: NSEvent) { clickAction() }
+    var beginMove: () -> Void = {}
+    var move: (NSPoint) -> Void = { _ in }
+    var endMove: () -> Void = {}
+    private func pointer(_ event: NSEvent) -> CGPoint { window?.convertPoint(toScreen: event.locationInWindow) ?? event.locationInWindow }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    private var pressPoint: CGPoint?
+    private var mouseMoved = false
+    override func mouseDown(with event: NSEvent) { pressPoint = pointer(event); mouseMoved = false }
+    override func mouseDragged(with event: NSEvent) {
+        guard let pressPoint else { return }
+        let point = pointer(event)
+        if !mouseMoved && hypot(point.x - pressPoint.x, point.y - pressPoint.y) > 4 { mouseMoved = true; beginMove() }
+        if mouseMoved { move(NSPoint(x: point.x - pressPoint.x, y: point.y - pressPoint.y)) }
+    }
+    override func mouseUp(with event: NSEvent) {
+        defer { pressPoint = nil; mouseMoved = false }
+        guard let pressPoint else { return }
+        if mouseMoved { endMove(); return }
+        let point = pointer(event)
+        if hypot(point.x - pressPoint.x, point.y - pressPoint.y) <= 4 { clickAction() }
+    }
     private var candidate: UUID?
     private var ready = false
     private var dwell: DispatchWorkItem?

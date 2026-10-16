@@ -12,10 +12,42 @@ struct PaperPull: Equatable {
 }
 
 enum ClipOrientation {
-    // The source asset already has its wire tail on the left.
-    // Keep that direction for both screen edges and the receiver.
     static func scale(isLeft: Bool) -> CGFloat { 1 }
-    static func inset(isLeft: Bool) -> CGFloat { isLeft ? 0 : 10 }
+    static func inset(isLeft: Bool) -> CGFloat { isLeft ? 0 : 22 }
+    static let size = CGSize(width: 44, height: 60)
+    static let hook = CGPoint(x: 22, y: 8)
+    static let jaw = CGPoint(x: 22, y: 54)
+    static let top: CGFloat = 18
+    static let compactHookY: CGFloat = top + hook.y
+    static let displayScale: CGFloat = 0.5
+    static let edgeAnchor: CGFloat = 44
+    static let contactY = compactHookY + (jaw.y - hook.y) * displayScale
+    static let insertion: CGFloat = 5
+    static let paperTop: CGFloat = contactY - insertion
+    static let verticalMargins: CGFloat = paperTop + 9
+
+    /// Folder shoulders are below the tab. Align the jaw with that actual edge,
+    /// including when a short window reduces the silhouette's tab height.
+    static func materialTop(housing: ContentHousing, height: CGFloat) -> CGFloat {
+        guard housing == .folder || housing == .collection else { return paperTop }
+        let tab = min(24, max(0, (height - 9 - paperTop) * 0.18 / 0.82))
+        return paperTop - tab
+    }
+
+}
+
+/// Scaling keeps the raised wire loop on its nail; the parent owns rotation.
+struct SuspendedClipScale: GeometryEffect {
+    var scale: CGFloat
+    var animatableData: CGFloat {
+        get { scale }
+        set { scale = newValue }
+    }
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let pin = ClipOrientation.hook
+        return ProjectionTransform(CGAffineTransform(translationX: pin.x, y: pin.y)
+            .scaledBy(x: scale, y: scale).translatedBy(x: -pin.x, y: -pin.y))
+    }
 }
 
 enum HingeReveal {
@@ -28,23 +60,23 @@ enum HingeReveal {
         (1 - bounded(progress)) * .pi * 105 / 180 * (isLeft ? 1 : -1)
     }
     static func translation(progress: CGFloat, isLeft: Bool) -> CGSize {
-        let p = bounded(progress)
-        return CGSize(width: (1 - p) * 10 * (isLeft ? -1 : 1),
-                      height: -sin(min(1, p) * .pi) * 3)
+        .zero // a suspended loop cannot slide away from its nail
+    }
+    static func suspension(size: CGSize, isLeft: Bool) -> CGPoint {
+        CGPoint(x: isLeft ? ClipOrientation.edgeAnchor : size.width - ClipOrientation.edgeAnchor, y: ClipOrientation.compactHookY)
     }
     static func grip(size: CGSize, isLeft: Bool) -> CGPoint {
-        // Centre of the right-facing jaw, including the card's outer padding.
-        CGPoint(x: isLeft ? 44 : size.width - 26, y: 30)
+        CGPoint(x: isLeft ? ClipOrientation.edgeAnchor : size.width - ClipOrientation.edgeAnchor, y: ClipOrientation.contactY)
     }
     static func swingHeight(size: CGSize, isLeft: Bool) -> CGFloat {
-        let pin = grip(size: size, isLeft: isLeft)
+        let pin = suspension(size: size, isLeft: isLeft)
         let reach = isLeft ? size.width - pin.x : pin.x
         return max(size.height, pin.y + hypot(reach, size.height - pin.y) + 12)
     }
 }
 
-/// Rotation takes place at the jaw, rather than at the centre of the card.
-/// The common translation is applied outside this effect to move both jaws too.
+/// Rotate the complete card assembly around its raised loop and stationary nail. Standalone row transitions
+/// can also use this transform, but a card must apply it only once to the group.
 struct HingeSheetEffect: GeometryEffect {
     var progress: CGFloat
     var isLeft: Bool
@@ -53,7 +85,7 @@ struct HingeSheetEffect: GeometryEffect {
         set { progress = newValue }
     }
     func effectValue(size: CGSize) -> ProjectionTransform {
-        let pin = HingeReveal.grip(size: size, isLeft: isLeft)
+        let pin = HingeReveal.suspension(size: size, isLeft: isLeft)
         let transform = CGAffineTransform(translationX: pin.x, y: pin.y)
             .rotated(by: HingeReveal.angle(progress: progress, isLeft: isLeft))
             .translatedBy(x: -pin.x, y: -pin.y)
@@ -108,30 +140,39 @@ struct PaperMovement: ViewModifier {
 }
 
 /// Dock positions are stored independently from expanded paper dimensions.
+enum HoverExpansionGate {
+    static func blocks(mouseButtons: Int, materialMoving: Bool, pointClamping: Bool) -> Bool {
+        mouseButtons != 0 || materialMoving || pointClamping
+    }
+}
+
 enum DockGeometry {
+    static let compactSize = CGSize(width: 64, height: 60)
+    static let thumbnailSize = CGSize(width: 30, height: 22.5)
+    static let spacing: CGFloat = 68
     static func side(at point: CGPoint, in frame: CGRect, distance: CGFloat = 42) -> ClampCore.ClipSide? {
         if point.x - frame.minX < distance { return .left }
         if frame.maxX - point.x < distance { return .right }
         return nil
     }
     static func height(at y: CGFloat, in frame: CGRect) -> Double {
-        Double(max(0, min(1, (y - 22 - frame.minY) / max(1, frame.height - 44))))
+        Double(max(0, min(1, (y - compactSize.height / 2 - frame.minY) / max(1, frame.height - compactSize.height))))
     }
     static func origins(heights: [Double?], in frame: CGRect) -> [CGFloat] {
         guard !heights.isEmpty else { return [] }
         let desired = heights.enumerated().map { originY(height: $0.element, index: $0.offset, in: frame) }
         let order = desired.indices.sorted { desired[$0] == desired[$1] ? $0 < $1 : desired[$0] < desired[$1] }
-        let gap = min(52, max(0, frame.height - 44) / CGFloat(max(1, heights.count - 1)))
+        let gap = min(spacing, max(0, frame.height - compactSize.height) / CGFloat(max(1, heights.count - 1)))
         var result = desired
         var floor = frame.minY
         for index in order { result[index] = max(floor, desired[index]); floor = result[index] + gap }
-        var ceiling = frame.maxY - 44
+        var ceiling = frame.maxY - compactSize.height
         for index in order.reversed() { result[index] = min(ceiling, result[index]); ceiling = result[index] - gap }
         return result
     }
     static func originY(height: Double?, index: Int, in frame: CGRect) -> CGFloat {
-        guard let height, height.isFinite else { return max(frame.minY, frame.maxY - 108 - CGFloat(index) * 52) }
-        return frame.minY + CGFloat(max(0, min(1, height))) * max(0, frame.height - 44)
+        guard let height, height.isFinite else { return max(frame.minY, frame.maxY - 108 - CGFloat(index) * spacing) }
+        return frame.minY + CGFloat(max(0, min(1, height))) * max(0, frame.height - compactSize.height)
     }
 }
 

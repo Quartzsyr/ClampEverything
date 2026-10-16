@@ -43,32 +43,48 @@ private struct MaterialSample: View {
         default: return .file
         }
     }
+    var sampleForm: PinnedContentForm {
+        switch material {
+        case .folder, .collection: return .pocket
+        case .note: return .notePage
+        case .photo: return .photo
+        case .document: return .documentPrint
+        case .bookmark: return .webPrint
+        case .audio: return .cassette
+        case .film: return .filmStrip
+        case .archive: return .parcel
+        case .file: return .fileSheet
+        }
+    }
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            ZStack {
-                if material == .photo {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.white)
-                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.gray.opacity(0.3)))
-                    Image(systemName: "mountain.2.fill").font(.system(size: 32)).foregroundStyle(.white)
-                        .frame(width: 78, height: 65)
-                        .background(LinearGradient(colors: [.cyan.opacity(0.6), .teal], startPoint: .top, endPoint: .bottom))
+            Group {
+                if sampleForm == .pocket {
+                    FolderMaterial(tint: preferences.folderTint, layers: material == .collection ? 3 : 1, dragPull: effectivePull)
+                } else if [.cassette, .filmStrip, .parcel].contains(sampleForm) {
+                    MinimalMediaObject(form: sampleForm, title: "", image: nil)
+                } else if sampleForm == .photo {
+                    LinearGradient(colors: [.cyan.opacity(0.6), .teal], startPoint: .top, endPoint: .bottom)
+                        .overlay(Image(systemName: "mountain.2.fill").font(.system(size: 30)).foregroundStyle(.white))
                 } else {
-                    HousingMaterial(housing: housing, id: sampleID, preferences: preferences,
-                                    pull: effectivePull, material: material,
-                                    layers: material == .collection ? 3 : 1, dragPull: effectivePull)
-                    if [.audio, .film, .archive].contains(material) {
-                        Image(systemName: material == .audio ? "waveform" : (material == .film ? "film" : "archivebox"))
-                            .font(.system(size: 24)).foregroundStyle(.white.opacity(0.9))
-                            .frame(width: 55, height: 38).background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 5))
-                            .padding(.top, 12)
+                    QuietPaper().overlay {
+                        VStack(alignment: .leading, spacing: 7) {
+                            ForEach(0..<4) { index in
+                                Rectangle().fill(.black.opacity(index == 0 ? 0.25 : 0.09)).frame(height: index == 0 ? 3 : 1)
+                                    .padding(.trailing, index == 3 ? 15 : 0)
+                            }
+                        }.padding(13)
                     }
                 }
             }
-            .frame(width: 94, height: 92).padding(9)
+            .padding(.top, ClipOrientation.materialTop(housing: housing, height: 130)).padding(.bottom, 9)
+            .padding(.leading, 9).padding(.trailing, 15)
             .modifier(MaterialMovement(material: material, pull: effectivePull, isLeft: false, disabled: disabled))
-            MetalClip(openness: material.jawOpening).padding(.top, 12).padding(.trailing, 10)
+            HangingMetalClip(openness: material.jawOpening)
+                .modifier(SuspendedClipScale(scale: ClipOrientation.displayScale))
+                .padding(.top, ClipOrientation.top).padding(.trailing, ClipOrientation.inset(isLeft: false))
         }
-        .frame(width: 112, height: 110).padding(8)
+        .frame(width: 112, height: 130).padding(8)
         .environment(\.colorScheme, .light)
         .contentShape(Rectangle())
         .gesture(DragGesture(minimumDistance: 1)

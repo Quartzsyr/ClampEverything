@@ -25,18 +25,31 @@ struct TargetGlowGeometryTests {
 }
 
 @MainActor struct TargetAimTests {
-    @Test func movementDiscardsEvenAnUncooperativeOldRead() async throws {
+    @Test(.timeLimit(.minutes(1))) func movementDiscardsEvenAnUncooperativeOldRead() async throws {
+        let (events, continuation) = AsyncStream<String>.makeStream()
+        defer { continuation.finish() }
         let aim = TargetAimController(dwell: 5_000_000, hintDelay: 5_000_000, read: { point in
-            if point.x == 1 { try? await Task.sleep(nanoseconds: 120_000_000) }
+            if point.x == 1 {
+                continuation.yield("old-started")
+                // This read deliberately completes even after cancellation.
+                await withCheckedContinuation { done in
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 0.12) { done.resume() }
+                }
+                continuation.yield("old-finished")
+            }
             return PointTarget(payload: .text("text"), title: "\(Int(point.x))")
         })
         defer { aim.cancel() }
         var titles: [String] = []
-        aim.onTarget = { if let target = $0 { titles.append(target.title) } }
+        aim.onTarget = { if let target = $0 { titles.append(target.title); continuation.yield("target-" + target.title) } }
+        var iterator = events.makeAsyncIterator()
         aim.update(at: CGPoint(x: 1, y: 0))
-        try await Task.sleep(nanoseconds: 30_000_000)
+        #expect(await iterator.next() == "old-started")
         aim.update(at: CGPoint(x: 2, y: 0))
-        try await Task.sleep(nanoseconds: 180_000_000)
+        var completed: Set<String> = []
+        while !completed.contains("old-finished") || !completed.contains("target-2") {
+            if let event = await iterator.next() { completed.insert(event) }
+        }
         #expect(titles == ["2"])
     }
     @Test func cancelBeforeDwellSuppressesTargetAndHint() async throws {

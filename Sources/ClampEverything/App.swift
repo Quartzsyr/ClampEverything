@@ -26,6 +26,13 @@ import Carbon
     private let sceneMenu = NSMenu(title: "工作场景")
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = CommandLine.arguments
+        if let exportIndex = arguments.firstIndex(of: "--export-website"), arguments.indices.contains(exportIndex + 1) {
+            Task { @MainActor in
+                do { try await WebsiteAssetExporter.export(to: URL(fileURLWithPath: arguments[exportIndex + 1])); NSApp.terminate(nil) }
+                catch { fputs("Website export failed: \(error)\n", stderr); exit(1) }
+            }
+            return
+        }
         isDemo = arguments.contains("--demo") || arguments.contains("--export-design") || arguments.contains("--export-customization") || arguments.contains("--export-workbench") || arguments.contains("--export-physical")
         let root: URL
         if let override = ProcessInfo.processInfo.environment["CLAMP_DATA_ROOT"] { root = URL(fileURLWithPath: override, isDirectory: true) }

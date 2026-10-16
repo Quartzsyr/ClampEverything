@@ -105,7 +105,7 @@ import ClampCore
             try await snapshot(CardSurface(store: store, model: model, manager: manager).frame(width: 320, height: 430).padding(22).background(Color(red: 0.34, green: 0.43, blue: 0.49)), size: NSSize(width: 364, height: 474), to: output.appendingPathComponent("16-attachment-\(side == .left ? "left" : "right").png"))
         }
         store.update(folder.id) { $0.placement = originalPlacement }
-        try await snapshot(ClipGuideView().padding(24).background(Color(red: 0.15, green: 0.24, blue: 0.31)), size: NSSize(width: 398, height: 298), to: output.appendingPathComponent("18-clip-guide.png"))
+        try await snapshot(ClipGuideView(playback: GuidePlayback(), examples: GuideExamples()).padding(24).background(Color(red: 0.15, green: 0.24, blue: 0.31)), size: NSSize(width: 828, height: 608), to: output.appendingPathComponent("18-clip-guide.png"))
         try await snapshot(HingeRevealStudy(), size: NSSize(width: 960, height: 490), to: output.appendingPathComponent("19-hinge-reveal.png"))
         try await snapshot(SoftSheetStudy(photo: store.images[image.id] ?? demoImage()), size: NSSize(width: 1000, height: 600), to: output.appendingPathComponent("17-soft-sheet.png"))
         try await snapshot(ClipMotionStudy(), size: NSSize(width: 960, height: 650), to: output.appendingPathComponent("15-clip-motion.png"))
@@ -128,7 +128,7 @@ import ClampCore
         let pickupPose = CursorClipPose()
         pickupPose.gripping = true; pickupPose.hasMaterial = true; pickupPose.material = .folder; pickupPose.pickupMessage = "论文项目"; pickupPose.nearEdge = true
         try await snapshot(VStack(spacing: 12) {
-            CursorClipView(pose: pickupPose).frame(width: 64, height: 46)
+            CursorClipView(pose: pickupPose)
             PickupHintView(pose: pickupPose).frame(width: 240, height: 62)
         }.padding(24).background(Color(white: 0.88)), size: NSSize(width: 310, height: 180), to: output.appendingPathComponent("31-pickup-feedback.png"))
         try await snapshot(HoldSettingsView(store: store, controller: manager.pointClamp).padding(28).background(Color(nsColor: .windowBackgroundColor)), size: NSSize(width: 450, height: 580), to: output.appendingPathComponent("14-hold-settings.png"))
@@ -204,7 +204,9 @@ struct HingeRevealStudy: View {
             ForEach(0..<3) { step in
                 VStack(spacing: 16) {
                     ZStack(alignment: .topTrailing) {
-                        ClampBackJaw(isLeft: false).padding(.top, 12).padding(.trailing, 10)
+                        HangingBackJaw()
+                            .modifier(SuspendedClipScale(scale: ClipOrientation.displayScale))
+                            .padding(.top, ClipOrientation.top).padding(.trailing, ClipOrientation.inset(isLeft: false))
                         PaperMaterial(id: id)
                             .overlay(alignment: .topLeading) {
                                 VStack(alignment: .leading, spacing: 18) {
@@ -213,14 +215,17 @@ struct HingeRevealStudy: View {
                                 }.padding(24).padding(.top, 16)
                             }
                             .shadow(color: .black.opacity(0.3), radius: 10, y: 8)
-                            .padding(.top, 9).padding(.trailing, 15).padding(.leading, 9).padding(.bottom, 9)
-                            .modifier(HingeSheetEffect(progress: [CGFloat(0), 0.55, 1][step], isLeft: false))
-                        MetalClip().scaleEffect(x: ClipOrientation.scale(isLeft: false), y: 1).padding(.top, 12).padding(.trailing, 10)
+                            .padding(.top, ClipOrientation.paperTop).padding(.trailing, 15).padding(.leading, 9).padding(.bottom, 9)
+                        HangingMetalClip()
+                            .modifier(SuspendedClipScale(scale: ClipOrientation.displayScale))
+                            .padding(.top, ClipOrientation.top).padding(.trailing, ClipOrientation.inset(isLeft: false))
                     }
                     .frame(width: 260, height: 330)
+                    .modifier(HingeSheetEffect(progress: [CGFloat(0), 0.55, 1][step], isLeft: false))
                     .modifier(HingeAssemblyEffect(progress: [CGFloat(0), 0.55, 1][step], isLeft: false))
+                    .overlay(alignment: .topTrailing) { SuspensionNail().padding(.top, ClipOrientation.compactHookY - 3).padding(.trailing, ClipOrientation.edgeAnchor - 3) }
                     .frame(width: 260, height: 390, alignment: .topTrailing).clipped()
-                    Text(["折在边缘", "绕夹点翻出", "回摆落稳"][step]).font(.system(size: 12)).foregroundStyle(.white.opacity(0.8))
+                    Text(["折在边缘", "绕尾环翻出", "回摆落稳"][step]).font(.system(size: 12)).foregroundStyle(.white.opacity(0.8))
                 }
             }
         }.padding(35).frame(maxWidth: .infinity, maxHeight: .infinity)

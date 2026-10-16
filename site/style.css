@@ -371,3 +371,4 @@ body:not(.capture-on) [data-source]{touch-action:auto}
 .archive-entries li span{overflow-wrap:anywhere}.archive-entries li small{white-space:nowrap}
 .file-inspector>button{font-size:10px;color:#79906e}.file-hex{font:12px/1.6 ui-monospace,monospace;color:#697860;user-select:text}
 .file-inspector:has(.archive-entries){justify-content:flex-start;overflow:auto}.file-inspector:has(.archive-entries)>img{height:70px;flex-shrink:0}
+.release-links{display:flex;gap:20px;flex-wrap:wrap;font-size:11px}.release-links a{text-decoration:underline;text-underline-offset:3px}.release-signing{font-size:10px;color:#87917f}

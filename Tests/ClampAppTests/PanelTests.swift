@@ -5,6 +5,30 @@ import ClampCore
 @testable import ClampEverything
 
 @Suite(.serialized) @MainActor struct PanelTests {
+    @Test func brassReceiverDefaultsOffAndToggleImmediatelyUpdatesEveryScreen() throws {
+        _ = NSApplication.shared
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("ClampBrass-" + UUID().uuidString)
+        let store = ClipStore(root: root); store.hidden = false
+        store.state.preferences.hideInFullScreen = false
+        store.addTextOrLink("保留已有夹项")
+        let manager = WindowManager(store: store)
+        defer { manager.shutdown(); try? FileManager.default.removeItem(at: root) }
+        #expect(!manager.rails.isEmpty)
+        #expect(manager.rails.values.allSatisfy { !$0.isVisible && $0.contentView == nil })
+        let id = try #require(store.active.first?.id)
+        for enabled in [true, false, true, false] {
+            store.state.preferences.showBrassClip = enabled
+            store.changed(immediate: true)
+            #expect(manager.rails.values.allSatisfy { $0.isVisible == enabled && ($0.contentView != nil) == enabled })
+            #expect(manager.cards[id]?.panel.isVisible == true)
+            let reopened = ClipStore(root: root)
+            #expect(reopened.state.preferences.showBrassClip == enabled)
+        }
+        manager.showGuide()
+        #expect(manager.rails.values.allSatisfy { !$0.isVisible })
+        manager.dismissGuide()
+        #expect(manager.rails.values.allSatisfy { !$0.isVisible })
+    }
     @Test func referencePanelDoesNotReplaceEditingKeyWindow() {
         _ = NSApplication.shared
         let editing = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 200, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
@@ -96,7 +120,7 @@ import ClampCore
         let card = manager.model(id)
         manager.layout(card)
         let frame = card.panel.frame
-        #expect(abs((frame.width - 24) / (frame.height - 18) - 800.0 / 450.0) < 0.001)
+        #expect(abs((frame.width - 24) / (frame.height - ClipOrientation.verticalMargins) - 800.0 / 450.0) < 0.001)
     }
     @Test func reopeningCancelsPendingFoldBackBeforeWindowShrinks() async throws {
         _ = NSApplication.shared

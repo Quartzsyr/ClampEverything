@@ -5,6 +5,8 @@ import Testing
 struct AppearanceTests {
     @Test func oldPreferencesReceiveUsableAppearanceAndBehaviorDefaults() throws {
         let preferences = try JSONDecoder().decode(AppPreferences.self, from: Data("{}".utf8))
+        #expect(!preferences.showBrassClip)
+        #expect(!AppPreferences().showBrassClip)
         #expect(preferences.folderTint == .kraft)
         #expect(preferences.noteStock == .natural)
         #expect(preferences.autoSnap)
@@ -15,6 +17,7 @@ struct AppearanceTests {
     }
     @Test func customizedPreferencesRoundTripWithoutChangingShortcuts() throws {
         var preferences = AppPreferences()
+        preferences.showBrassClip = true
         preferences.folderTint = .ocean; preferences.noteStock = .ruled
         preferences.autoSnap = false; preferences.snapDistance = 70
         preferences.motionIntensity = 0; preferences.hoverToExpand = false

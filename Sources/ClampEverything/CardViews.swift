@@ -84,6 +84,11 @@ struct CardSurface: View {
     @ObservedObject var store: ClipStore
     @ObservedObject var model: CardModel
     let manager: WindowManager
+    /// Native website exports keep the stationary nail as a separate layer.
+    var showsNail = true
+    /// WebKit's separately composited backing layer is captured by takeSnapshot
+    /// for offline exports, then placed inside the unchanged native paper finish.
+    var exportWebSnapshot: NSImage? = nil
     @State private var resizeOriginal: NSSize?
     @State private var hovering = false
     @State private var grouping = false
@@ -110,7 +115,7 @@ struct CardSurface: View {
         wide && placement.mode == .docked && !model.moving && !motionDisabled ? model.revealProgress : 1
     }
     var hingeProgress: CGFloat {
-        wide && placement.mode == .docked && !model.moving && !motionDisabled ? model.revealProgress : 1
+        wide ? (placement.mode == .docked && !model.moving && !motionDisabled ? model.revealProgress : 1) : 0
     }
     var paperPull: PaperPull {
         guard !motionDisabled, !model.moving else { return .resting }
@@ -124,13 +129,19 @@ struct CardSurface: View {
                          y: model.paperPull.y * strength + hoverPull.y * strength * 0.25)
     }
     var moveGrip: some View {
-        MetalClip(openness: grouping || model.mergeReady ? 1 : (model.nearEdge ? 0.65 : (model.moving ? 0.35 : restingJaw)))
-            // The tail stays left; the right jaw overlaps the sheet edge.
-            .scaleEffect(x: ClipOrientation.scale(isLeft: isLeft), y: 1)
+        HangingMetalClip(openness: grouping || model.mergeReady ? 1 : (model.nearEdge ? 0.65 : (model.moving ? 0.35 : restingJaw)))
             .overlay(MoveHandle(begin: { model.beginMove() }, move: { model.move($0) }, end: { model.endMove() }, click: { if wide { model.close() } else { model.show() } }))
             .help("拖动夹子移动 · 靠近边缘松手夹住 · 单击收放")
             .accessibilityLabel(title + "，拖动移动，单击收放")
     }
+    var materialTop: CGFloat {
+        ClipOrientation.materialTop(housing: housing, height: model.sheetSize.height)
+    }
+    var clipPose: SuspendedClipScale {
+        SuspendedClipScale(scale: ClipOrientation.displayScale)
+    }
+    var liftsRightCorner: Bool { PinnedContentForm.forItem(item) == .documentPrint || isLeft }
+    var canLiftCorner: Bool { housing.isFlexible || PinnedContentForm.forItem(item).isManuscript }
     var foldGrip: some View {
         Color.clear.frame(width: 36, height: 36)
             .overlay {
@@ -139,7 +150,7 @@ struct CardSurface: View {
                         path.move(to: CGPoint(x: 5, y: 28))
                         path.addQuadCurve(to: CGPoint(x: 28, y: 5), control: CGPoint(x: 6, y: 7))
                     }.stroke(.gray.opacity(0.32), lineWidth: 0.7)
-                        .scaleEffect(x: isLeft ? -1 : 1, y: 1).allowsHitTesting(false)
+                        .scaleEffect(x: liftsRightCorner ? -1 : 1, y: 1).allowsHitTesting(false)
                 }
             }
             .overlay(MoveHandle(begin: { hoverPull = .resting; model.interaction(true) },
@@ -150,27 +161,42 @@ struct CardSurface: View {
     }
     var body: some View {
         ZStack(alignment: isLeft ? .topLeading : .topTrailing) {
-            ClampBackJaw(isLeft: isLeft).padding(.top, wide ? 12 : 4)
+            HangingBackJaw().modifier(clipPose)
+                .padding(.top, ClipOrientation.top).padding(.leading, isLeft ? 22 : 0)
                 .padding(.trailing, ClipOrientation.inset(isLeft: isLeft)).zIndex(0)
             if wide {
                 VStack(spacing: 0) {
                     if let item, item.kind == .image { PhotoBody(store: store, item: item, interaction: { model.interaction($0) }, pull: paperPull, fold: fold, isLeft: isLeft) }
+                    else if item?.kind == .link, let exportWebSnapshot {
+                        Image(nsImage: exportWebSnapshot).resizable().interpolation(.high).scaledToFit()
+                            .clipShape(SoftSheetMask())
+                            .overlay(SheetLighting(pull: .resting, isLeft: false))
+                            .modifier(PaperFlexEffect(pull: .resting, isLeft: false))
+                    }
                     else if let item { ItemBody(store: store, item: item, manager: manager, interaction: { model.interaction($0) }).equatable() }
                     else { GroupBody(store: store, groupID: model.id, manager: manager, interaction: { model.interaction($0) }).equatable() }
                 }
                 .padding(.top, housing == .folder || housing == .collection ? 22 : 0)
-                .background { HousingMaterial(housing: housing, id: model.id, preferences: store.state.preferences, title: title, pull: paperPull, isLeft: isLeft, material: physical, opening: folderProgress, layers: layers, dragPull: dragPull) }
-                .modifier(HousingFinish(housing: housing, pull: paperPull, fold: fold, isLeft: isLeft))
-                .overlay { GripContact(material: physical, isLeft: isLeft) }
+                .environment(\.manuscriptMotion, ManuscriptMotion(pull: dragPull, fold: fold, isLeft: isLeft, disabled: motionDisabled,
+                                                               turnActivity: { model.documentTurn($0) }))
+                .modifier(PinnedObjectFinish(form: .forItem(item), id: model.id, preferences: store.state.preferences,
+                                             pull: paperPull, fold: fold, isLeft: isLeft, housing: housing, physical: physical,
+                                             opening: folderProgress, layers: layers, dragPull: dragPull, title: item?.kind == .folder ? "" : title))
+                .overlay { GripContact(material: physical, isLeft: isLeft, depth: ClipOrientation.contactY - materialTop) }
 
                 .shadow(color: .black.opacity(0.18), radius: 1.8, x: isLeft ? 1 : -1, y: 2)
                 .shadow(color: .black.opacity(0.24), radius: 8 + abs(paperPull.y) * 5, x: isLeft ? 2 : -2, y: 7 + abs(paperPull.y) * 5)
                 .environment(\.colorScheme, .light)
-                .padding(.top, 9).padding(.bottom, 9)
+                .padding(.top, materialTop).padding(.bottom, 9)
                 .padding(.leading, isLeft ? 15 : 9).padding(.trailing, isLeft ? 9 : 15)
                 .modifier(MaterialMovement(material: physical, pull: dragPull, isLeft: isLeft, disabled: motionDisabled, tracking: model.moving && !model.dragResting))
                 .animation(reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.73), value: fold)
-                .overlay(alignment: isLeft ? .bottomTrailing : .bottomLeading) { if housing.isFlexible && !motionDisabled { foldGrip } }
+                .overlay(alignment: liftsRightCorner ? .bottomTrailing : .bottomLeading) {
+                    if canLiftCorner && !motionDisabled {
+                        // Leave the document's page-navigation buttons unobstructed.
+                        foldGrip.offset(y: PinnedContentForm.forItem(item) == .documentPrint ? -34 : 0)
+                    }
+                }
                 .overlay(alignment: isLeft ? .bottomTrailing : .bottomLeading) {
                     if hovering {
                         Button { model.close() } label: { Image(systemName: "chevron.compact.right").rotationEffect(.degrees(isLeft ? 180 : 0)).font(.system(size: 15)).padding(10) }
@@ -184,29 +210,36 @@ struct CardSurface: View {
                             .overlay(MoveHandle(begin: { resizeOriginal = model.panel.frame.size; model.interaction(true) }, move: { delta in if let original = resizeOriginal { manager.resize(model.id, delta: delta, original: original) } }, end: { resizeOriginal = nil; model.interaction(false); store.save() }))
                     }
                 }
-                .modifier(HingeSheetEffect(progress: hingeProgress, isLeft: isLeft))
                 .zIndex(1)
             } else {
                 CompactClipView(store: store, id: model.id, isLeft: isLeft, open: { model.show() }, interaction: { model.interaction($0) })
                     .zIndex(1)
             }
-            moveGrip.padding(.top, wide ? 12 : 4)
+            moveGrip.modifier(clipPose)
+                .padding(.top, ClipOrientation.top).padding(.leading, isLeft ? 22 : 0)
                 .padding(.trailing, ClipOrientation.inset(isLeft: isLeft)).zIndex(3)
         }
-        // The paper pivots at the jaw; this short movement carries both jaws
-        // and the pinned paper corner together, keeping the contact intact.
-        .modifier(HingeAssemblyEffect(progress: hingeProgress, isLeft: isLeft))
         .frame(width: model.sheetSize.width > 0 ? model.sheetSize.width : nil,
                height: model.sheetSize.height > 0 ? model.sheetSize.height : nil,
                alignment: isLeft ? .topLeading : .topTrailing)
+        // One rotation owns the paper, front jaw, rear jaw and native move handle.
+        .modifier(HingeSheetEffect(progress: hingeProgress, isLeft: isLeft))
+        .modifier(HingeAssemblyEffect(progress: hingeProgress, isLeft: isLeft))
+        .overlay(alignment: isLeft ? .topLeading : .topTrailing) {
+            if showsNail && placement.mode == .docked && !model.moving {
+                SuspensionNail().padding(.top, ClipOrientation.compactHookY - 3).padding(isLeft ? .leading : .trailing, ClipOrientation.edgeAnchor - 3)
+            }
+        }
         .contentShape(Rectangle())
         .background(GeometryReader { geometry in
             Color.clear.onAppear { surfaceSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in surfaceSize = size }
         }.allowsHitTesting(false))
-        .overlay(alignment: .top) {
-            LibraryDropZone(destination: model.id, store: store, highlighted: { grouping = $0; model.interaction($0) }, click: { model.show() })
-                .frame(width: wide ? 130 : 44, height: 26).padding(.top, wide ? (housing == .folder || housing == .collection ? 30 : 7) : 18)
+        .overlay(alignment: isLeft ? .topLeading : .topTrailing) {
+            LibraryDropZone(destination: model.id, store: store, highlighted: { grouping = $0; model.interaction($0) }, click: { model.show() },
+                            beginMove: { model.beginMove() }, move: { model.move($0) }, endMove: { model.endMove() })
+                .frame(width: 26, height: 34).padding(.top, ClipOrientation.top)
+                .padding(isLeft ? .leading : .trailing, ClipOrientation.edgeAnchor - 13)
         }
         .overlay(alignment: .top) {
             if model.mergeReady {
@@ -240,8 +273,9 @@ struct CardSurface: View {
         }
         .onAppear { if let item, item.kind == .image { store.loadThumbnail(item) } }
         .onDisappear { hoverReset?.cancel() }
-        .onChange(of: store.images[model.id]?.size) { _, _ in manager.layout(model) }
         .tint(ClipStyle.accent)
+        .padding(.top, model.pageTurnInset)
+        .padding(.horizontal, model.pageTurnSideInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isLeft ? .topLeading : .topTrailing)
     }
     @ViewBuilder var actions: some View {
@@ -284,14 +318,14 @@ struct PhotoBody: View {
             if let image = store.images[item.id] {
                 SoftImageSurface(image: image, pull: pull, isLeft: isLeft)
                     .aspectRatio(image.size, contentMode: .fit)
-                    .modifier(PhotoFinish(pull: pull, isLeft: isLeft))
+                    .modifier(PhotoFinish(cutout: item.imageIsCutout == true, pull: pull, isLeft: isLeft))
                     .overlay(ContentDragHandle(item: item, store: store, interaction: interaction, showLabel: false))
                     .help("轻点复制，拖动照片交给其他应用；右键查看更多操作")
             } else {
                 VStack(spacing: 10) {
                     Image(systemName: "photo").font(.system(size: 30, weight: .light))
                     Text(store.status(item) ?? "正在显影…").font(.system(size: 11))
-                }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.thinMaterial)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity).background { QuietPaper() }
             }
         }.frame(maxWidth: .infinity, alignment: .top)
     }
@@ -304,59 +338,16 @@ struct ItemBody: View, Equatable {
     let manager: WindowManager
     var interaction: (Bool) -> Void = { _ in }
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if item.kind == .file || item.kind == .link {
-                HStack(spacing: 7) { ClipIcon(item: item, size: 17); Text(item.title).font(.system(size: 12, weight: .medium)).lineLimit(2); Spacer(minLength: 0) }
+        Group {
+            if item.kind == .folder {
+                FolderBody(store: store, item: item, interaction: interaction)
+                    .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 20)
+            } else if item.kind == .image {
+                PhotoBody(store: store, item: item, interaction: interaction)
+            } else {
+                MinimalPinnedContent(store: store, item: item, interaction: interaction)
             }
-            if let status = store.status(item) {
-                Label(status, systemImage: "exclamationmark.triangle").font(.system(size: 11)).foregroundStyle(.orange)
-                if item.bookmark != nil { Button("重新关联位置…") { store.relink(item) } }
-            }
-            if item.kind == .folder { FolderBody(store: store, item: item, interaction: interaction) }
-            else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if item.kind == .image || item.kind == .file {
-                            Group {
-                                if [.audio, .film, .archive].contains(PhysicalMaterial.forItem(item)) {
-                                    FileObjectBadge(material: PhysicalMaterial.forItem(item), extensionLabel: URL(fileURLWithPath: item.originalPath ?? item.title).pathExtension)
-                                }
-                                else if let image = store.images[item.id] { Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: .infinity).frame(minHeight: 100, maxHeight: 220) }
-                                else { ClipIcon(item: item, size: 72).frame(maxWidth: .infinity).frame(height: 130) }
-                            }.overlay(ContentDragHandle(item: item, store: store, interaction: interaction, showLabel: false))
-                                .onAppear { store.loadThumbnail(item) }
-                        } else if let text = item.text {
-                            Text(text).font(.system(size: 14)).lineSpacing(5).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                        } else if let link = item.link {
-                            Image(systemName: "link.circle.fill").font(.system(size: 45)).foregroundStyle(ClipStyle.accent).frame(maxWidth: .infinity).padding(.top, 16)
-                            Text(link).font(.system(size: 12)).foregroundStyle(.secondary).textSelection(.enabled)
-                        }
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                }.frame(maxHeight: .infinity)
-            }
-            ContentDragHandle(item: item, store: store, interaction: interaction).frame(height: 22)
-            if let message = store.message {
-                Text(message).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
-            }
-            if !item.note.isEmpty || !item.tags.isEmpty { Button { manager.edit(item.id) } label: {
-                HStack(alignment: .top, spacing: 7) {
-                    Image(systemName: "tag").font(.system(size: 11))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.note.isEmpty ? "添一句用途备注…" : item.note).font(.system(size: 11)).lineLimit(2)
-                        if !item.tags.isEmpty { Text(item.tags.joined(separator: " · ")).font(.system(size: 10)).foregroundStyle(.secondary) }
-                    }; Spacer(minLength: 0)
-                    Image(systemName: "pencil").font(.system(size: 10)).foregroundStyle(.secondary)
-                }.padding(9).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.yellow.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
-            }.buttonStyle(.plain).help("编辑名称与备注") }
-
-        }.padding(18).padding(.top, 17).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-    var source: String {
-        if item.assetName != nil { return "来源：剪贴板图片 · 应用内副本" }
-        if item.kind == .text { return "来源：主动夹入的文字 · 可编辑副本" }
-        if item.kind == .link { return "来源：网页链接" }
-        return "原文件引用：" + (store.fileURL(item)?.path ?? item.originalPath ?? "不可用")
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -378,123 +369,33 @@ struct GroupBody: View, Equatable {
                     VStack(spacing: 7) {
                         ForEach(store.sceneMembers(groupID)) { item in
                             HStack(spacing: 10) {
-                                Group {
-                                    if item.kind == .image, let image = store.images[item.id] {
-                                        Image(nsImage: image).resizable().scaledToFill().frame(width: 28, height: 28).clipped().modifier(PhotoFinish())
-                                    } else { ClipIcon(item: item) }
-                                }.onAppear { if item.kind == .image { store.loadThumbnail(item) } }
-                                    .overlay(ContentDragHandle(item: item, store: store, interaction: interaction, showLabel: false))
-                                    .help("拖出图标，交给其他应用")
-                                Button { selected = item.id } label: {
+                                HStack(spacing: 10) {
+                                    Group {
+                                        if let image = store.images[item.id], [.image, .file].contains(item.kind) {
+                                            Image(nsImage: image).resizable().scaledToFill().frame(width: 28, height: 28).clipped().modifier(PhotoFinish())
+                                        } else { ClipIcon(item: item) }
+                                    }.onAppear { store.loadThumbnail(item) }
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(item.title).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                                        Text(item.placement.mode == .floating ? "留在屏幕" : (item.note.isEmpty ? item.kind.title : item.note)).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                                        Text(item.note.isEmpty ? item.kind.title : item.note).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                                     }.frame(maxWidth: .infinity, alignment: .leading)
-                                }.buttonStyle(.plain)
+                                }.overlay(ContentDragHandle(item: item, store: store, interaction: interaction, showLabel: false))
+                                    .help("单击复制 · 拖出复制")
+                                Button { selected = item.id } label: { Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(.secondary) }
+                                    .buttonStyle(.plain).help("查看内容")
                                 Menu {
                                     Button("拉出常驻（保留分组）") { manager.float(item.id) }
                                     Button("从组中抽出") { store.extract(item.id) }
                                     Button("上移") { store.reorder(item.id, by: -1) }
                                     Button("下移") { store.reorder(item.id, by: 1) }
-                                } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
+                                } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                             }.padding(10).background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 7))
                                 .transition(.modifier(active: HingeSheetEffect(progress: 0, isLeft: true), identity: HingeSheetEffect(progress: 1, isLeft: true)))
                         }
                         if store.sceneMembers(groupID).isEmpty { Text("项目夹里还没有内容。\n在全部夹项中选择内容加入。 ").foregroundStyle(.secondary).padding(20) }
                     }.padding(12).animation(reduceMotion || store.state.preferences.motionIntensity == 0 ? nil : .spring(response: HingeReveal.duration, dampingFraction: 0.72), value: store.sceneMembers(groupID).map(\.id))
                 }
-                Text("点击查看 · 拖出图标交接 · ⋯ 抽出或排序").font(.system(size: 10)).foregroundStyle(.secondary).padding(12).padding(.bottom, 10)
             }
         }.frame(maxHeight: .infinity)
-    }
-}
-
-struct FolderEntry: Identifiable {
-    let url: URL
-    let folder: Bool
-    var id: String { url.path }
-}
-struct FolderBody: View {
-    @ObservedObject var store: ClipStore
-    let item: ClipItem
-    var interaction: (Bool) -> Void
-    @State private var directory: URL?
-    @State private var entries: [FolderEntry] = []
-    @State private var failure: String?
-    @State private var loading = false
-    @State private var generation = UUID()
-    var root: URL? { store.fileURL(item) }
-    var current: URL? { directory ?? root }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack {
-                Button { if let directory, let root, directory != root { self.directory = directory.deletingLastPathComponent(); reload() } } label: { Image(systemName: "chevron.left") }.disabled(current == root)
-                Text(current?.lastPathComponent ?? item.title).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                Spacer()
-                Button { reload() } label: { Image(systemName: "arrow.clockwise") }.help("刷新文件夹")
-                Button("Finder") { if let current { NSWorkspace.shared.open(current) } }
-            }.controlSize(.small).buttonStyle(.bordered)
-            Text(current?.path ?? "目录不可用").font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
-            ScrollView {
-                VStack(spacing: 2) {
-                    if loading { ProgressView().controlSize(.small).padding(20) }
-                    else if let failure { Text(failure).font(.system(size: 11)).foregroundStyle(.orange).padding(12) }
-                    else if entries.isEmpty { Text("这个文件夹是空的").font(.system(size: 11)).foregroundStyle(.secondary).padding(20) }
-                    ForEach(entries) { entry in
-                        HStack(spacing: 6) {
-                            Image(nsImage: NSWorkspace.shared.icon(forFile: entry.url.path)).resizable().frame(width: 18, height: 18)
-                            Button { if entry.folder { directory = entry.url; reload() } else { NSWorkspace.shared.open(entry.url) } } label: { Text(entry.url.lastPathComponent).font(.system(size: 11)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading) }.buttonStyle(.plain)
-                            Menu {
-                                Button("打开") { NSWorkspace.shared.open(entry.url) }
-                                Button("快速预览") { PreviewController.shared.show(entry.url) }
-                                Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting([entry.url]) }
-                            } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
-                            ContentDragHandle(item: entryItem(entry), store: store, interaction: interaction, showLabel: false).frame(width: 18, height: 22).overlay(Image(systemName: "arrow.up.forward").font(.system(size: 9)).foregroundStyle(.secondary).allowsHitTesting(false)).help("拖出此项")
-                        }.padding(.vertical, 5).padding(.horizontal, 4)
-                    }
-                }
-            }.frame(minHeight: 60, maxHeight: .infinity)
-            if let current {
-                DropZone(label: "＋ 复制到此文件夹 · 保留两份", fileOnly: true, receive: { board in
-                    if let urls = board.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] { store.startCopy(urls, to: current, for: item.id) }
-                }, interaction: interaction).frame(height: 34)
-                if let progress = store.copies[item.id] {
-                    VStack(alignment: .leading, spacing: 4) {
-                        if progress.running {
-                            ProgressView(value: Double(progress.completed), total: Double(max(1, progress.total)))
-                            HStack { Text("\(progress.completed)/\(progress.total) · 复制中"); Spacer(); Button("停止后续项") { store.copies[item.id]?.cancelRequested = true } }
-                        } else {
-                            HStack { Text("已完成 \(progress.completed)/\(progress.total)"); Spacer(); if progress.results.contains(where: { $0.error != nil }) { Button("重试失败项") { store.retryCopy(item.id) } } }
-                        }
-                        Text(progress.target.path).lineLimit(1).help(progress.target.path).foregroundStyle(.secondary)
-                        ScrollView { VStack(alignment: .leading, spacing: 3) { ForEach(progress.results) { result in
-                            Text(result.error.map { "\(result.source.lastPathComponent)：\($0)" } ?? "✓ \(result.destination?.lastPathComponent ?? "")").foregroundStyle(result.error == nil ? Color.secondary : Color.orange).textSelection(.enabled)
-                        } } }.frame(maxHeight: 48)
-                    }.font(.system(size: 10)).controlSize(.mini)
-                        .onChange(of: progress.running) { _, running in if !running { reload() } }
-                }
-            }
-        }.onAppear { reload() }
-            .onChange(of: item.originalPath) { _, _ in directory = nil; reload() }
-            .onChange(of: store.state.preferences.showHiddenFiles) { _, _ in reload() }
-    }
-    func entryItem(_ entry: FolderEntry) -> ClipItem {
-        var clip = ClipItem(kind: entry.folder ? .folder : .file, title: entry.url.lastPathComponent); clip.originalPath = entry.url.path; return clip
-    }
-    func reload() {
-        guard let url = current else { failure = "原目录不可用，请重新关联。"; return }
-        generation = UUID(); let token = generation
-        loading = true; failure = nil; entries = []
-        let hidden = store.state.preferences.showHiddenFiles
-        Task {
-            let result: Result<[FolderEntry], Error> = await Task.detached(priority: .userInitiated) {
-                Result {
-                    let urls = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey], options: hidden ? [] : [.skipsHiddenFiles])
-                    return urls.map { FolderEntry(url: $0, folder: (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) }.sorted { a, b in a.folder != b.folder ? a.folder : a.url.lastPathComponent.localizedStandardCompare(b.url.lastPathComponent) == .orderedAscending }
-                }
-            }.value
-            guard token == generation else { return }; loading = false
-            switch result { case .success(let values): entries = values; case .failure(let error): failure = error.localizedDescription }
-        }
     }
 }

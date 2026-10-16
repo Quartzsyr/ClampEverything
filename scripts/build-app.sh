@@ -17,7 +17,8 @@ for CLAMP_ASSET in clip-silver clip-brass clip-silver-half clip-silver-open clip
     sips -Z 256 "$PROJECT_ROOT/Sources/ClampEverything/Resources/Generated/$CLAMP_ASSET.png" --out "$APP/Contents/Resources/Generated/$CLAMP_ASSET.png" >/dev/null
 done
 sips -Z 1024 "$PROJECT_ROOT/Sources/ClampEverything/Resources/Generated/cursor-clip-motion-v2.png" --out "$APP/Contents/Resources/Generated/cursor-clip-motion-v2.png" >/dev/null
-for CLAMP_PAPER in paper-natural paper-soft-curl paper-soft-wave paper-calm-v2; do
+sips -Z 1024 "$PROJECT_ROOT/Sources/ClampEverything/Resources/Generated/hanging-clip-silver.png" --out "$APP/Contents/Resources/Generated/hanging-clip-silver.png" >/dev/null
+for CLAMP_PAPER in paper-natural paper-soft-curl paper-soft-wave paper-calm-v2 paper-minimal-v1; do
     sips -Z 1100 "$PROJECT_ROOT/Sources/ClampEverything/Resources/Generated/$CLAMP_PAPER.png" --out "$APP/Contents/Resources/Generated/$CLAMP_PAPER.png" >/dev/null
 done
 sips -z 1024 1024 "$PROJECT_ROOT/Sources/ClampEverything/Resources/Generated/app-icon.png" --out "$PROJECT_ROOT/build/icon.png" >/dev/null
@@ -40,8 +41,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>ClampEverything</string>
 <key>CFBundleIconFile</key><string>ClampEverything</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.6.4</string>
-<key>CFBundleVersion</key><string>13</string>
+<key>CFBundleShortVersionString</key><string>1.7.16</string>
+<key>CFBundleVersion</key><string>35</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>

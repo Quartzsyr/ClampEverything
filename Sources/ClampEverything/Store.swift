@@ -19,11 +19,15 @@ struct CopyProgress {
     @Published var message: String?
     @Published var hidden = false
     @Published var copies: [UUID: CopyProgress] = [:]
+    @Published var thumbnailFailures: Set<UUID> = []
     @Published var images: [UUID: NSImage] = [:]
+    var documentPageIndices: [UUID: Int] = [:]
+    var webpageScrollPositions: [UUID: CGPoint] = [:]
     let storage: LibraryStorage
     let undo = UndoManager()
     let copyQueue = FileCopyQueue()
     var writable = true
+    var onThumbnailChange: ((UUID) -> Void)?
     var onReveal: ((UUID) -> Void)?
     var onChange: (() -> Void)?
     private var changeBatchDepth = 0
@@ -32,8 +36,10 @@ struct CopyProgress {
     private var cleanupTimer: Timer?
     private var messageTimer: Timer?
     private var thumbnailPaths: [UUID: String] = [:]
+    private let copyPasteboard: NSPasteboard
 
-    init(root: URL) {
+    init(root: URL, copyPasteboard: NSPasteboard = .general) {
+        self.copyPasteboard = copyPasteboard
         storage = LibraryStorage(root: root)
         do { try storage.prepare(); state = try storage.load() }
         catch { writable = false; message = "资料库未能读取：\(error.localizedDescription) 请检查 \(storage.stateURL.path)。为保护数据，已停止写入。" }
@@ -139,11 +145,12 @@ struct CopyProgress {
         if let url = board.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL { addTextOrLink(url.absoluteString); return }
         notify("没有可夹住的内容。请先复制文件、图片、文字或网页链接。")
     }
-    func addCapturedImage(_ image: CGImage, title: String) {
+    func addCapturedImage(_ image: CGImage, title: String, isCutout: Bool = false) {
         guard writable else { return }
         do {
             guard let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { notify("无法保存图片"); return }
             var item = ClipItem(kind: .image, title: title)
+            item.imageIsCutout = isCutout ? true : nil
             let name = item.id.uuidString + ".png"
             try png.write(to: storage.assetURL(name), options: .atomic)
             item.assetName = name; setScreenForNew(&item); state.items.append(item)
@@ -182,10 +189,12 @@ struct CopyProgress {
             if let error { Task { @MainActor in self.notify("打开失败：\(error.localizedDescription)") } }
         }
     }
-    func copy(_ item: ClipItem) {
-        let board = NSPasteboard.general
-        guard let writer = pasteboardItem(item) else { return }
-        board.clearContents(); board.writeObjects([writer]); notify("已复制「\(item.title)」")
+    @discardableResult func copy(_ item: ClipItem, to destination: NSPasteboard? = nil) -> Bool {
+        let board = destination ?? copyPasteboard
+        guard let writer = pasteboardItem(item) else { return false }
+        board.clearContents()
+        guard board.writeObjects([writer]) else { notify("复制未完成，请重试。"); return false }
+        notify("已复制「\(item.title)」"); return true
     }
     func copyPath(_ item: ClipItem) {
         guard let url = fileURL(item) else { return }
@@ -198,6 +207,7 @@ struct CopyProgress {
         else if let link = item.link { writer.setString(link, forType: .URL); writer.setString(link, forType: .string) }
         else if let url = fileURL(item), FileManager.default.fileExists(atPath: url.path) {
             writer.setString(url.absoluteString, forType: .fileURL)
+            if item.imageIsCutout == true, let png = try? Data(contentsOf: url) { writer.setData(png, forType: .png) }
             if item.kind == .image, let image = NSImage(contentsOf: url), let tiff = image.tiffRepresentation { writer.setData(tiff, forType: .tiff) }
         } else { notify("无法拖出或复制：原内容不可用。"); return nil }
         return writer
@@ -259,14 +269,43 @@ struct CopyProgress {
         startCopy(progress.results.filter { $0.error != nil }.map(\.source), to: progress.target, for: id)
     }
     func loadThumbnail(_ item: ClipItem) {
-        guard [.file, .image].contains(item.kind), let url = fileURL(item), FileManager.default.fileExists(atPath: url.path), thumbnailPaths[item.id] != url.path else { return }
-        thumbnailPaths[item.id] = url.path
+        guard [.file, .image].contains(item.kind), let url = fileURL(item), FileManager.default.fileExists(atPath: url.path) else { return }
+        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+        let identity = url.path + ":" + String(values?.contentModificationDate?.timeIntervalSince1970 ?? 0) + ":" + String(values?.fileSize ?? 0)
+        guard thumbnailPaths[item.id] != identity else { return }
+        thumbnailPaths[item.id] = identity
+        thumbnailFailures.remove(item.id)
+        if item.imageIsCutout == true {
+            Task { @MainActor [weak self] in
+                let image = await Task.detached(priority: .utility) { NSImage(contentsOf: url) }.value
+                self?.acceptThumbnail(image, for: item.id, url: url, identity: identity)
+            }
+            return
+        }
+        if url.pathExtension.lowercased() == "pdf" {
+            Task { @MainActor [weak self] in
+                let image = await Task.detached(priority: .utility) { DocumentThumbnailRenderer.firstPage(url) }.value
+                self?.acceptThumbnail(image, for: item.id, url: url, identity: identity)
+            }
+            return
+        }
         let request = QLThumbnailGenerator.Request(fileAt: url, size: CGSize(width: 1000, height: 800), scale: 1, representationTypes: .thumbnail)
-        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { representation, _ in
-            guard let image = representation?.nsImage else { return }
-            Task { @MainActor in self.images[item.id] = image }
+        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { [weak self] representation, _ in
+            Task { @MainActor [weak self] in
+                let image: NSImage?
+                if let generated = representation?.nsImage { image = generated }
+                else { image = await Task.detached(priority: .utility) { DocumentThumbnailRenderer.firstPage(url) }.value }
+                self?.acceptThumbnail(image, for: item.id, url: url, identity: identity)
+            }
         }
     }
+    private func acceptThumbnail(_ image: NSImage?, for id: UUID, url: URL, identity: String) {
+        guard thumbnailPaths[id] == identity, let current = item(id), current.removedAt == nil,
+              fileURL(current)?.path == url.path else { return }
+        if let image { images[id] = image; thumbnailFailures.remove(id); onThumbnailChange?(id) }
+        else { thumbnailFailures.insert(id); thumbnailPaths[id] = nil }
+    }
+
     func reconcileScreens() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let ids = Set(NSScreen.screens.map(\.stableID))

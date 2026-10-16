@@ -95,10 +95,12 @@ struct PaperMaterial: View {
 }
 
 struct PhotoFinish: ViewModifier {
+    var cutout = false
     var pull = PaperPull.resting
     var isLeft = false
-    func body(content: Content) -> some View {
-        content
+    @ViewBuilder func body(content: Content) -> some View {
+        if cutout { content.shadow(color: .black.opacity(0.16), radius: 1.5, y: 1) }
+        else { content
             .clipShape(SoftSheetMask(pull: pull, isLeft: isLeft))
             .overlay {
                 LinearGradient(stops: [.init(color: .white.opacity(0.08), location: 0), .init(color: .white.opacity(0.01), location: max(0.08, min(0.7, 0.28 + Double(pull.x) * 0.16))), .init(color: .clear, location: 0.75), .init(color: .white.opacity(0.025), location: 1)], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -106,6 +108,7 @@ struct PhotoFinish: ViewModifier {
             }
             .overlay(SoftSheetMask(pull: pull, isLeft: isLeft).stroke(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.12), .black.opacity(0.16), .white.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.65).allowsHitTesting(false))
             .background(SoftSheetMask(pull: pull, isLeft: isLeft).fill(Color(white: 0.93)).offset(y: 1.2))
+        }
     }
 }
 

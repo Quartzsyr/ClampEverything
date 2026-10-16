@@ -68,7 +68,7 @@ struct PaperMotionTests {
             #expect(left.width == -right.width && left.height == right.height)
             #expect(HingeReveal.angle(progress: progress, isLeft: true) == -HingeReveal.angle(progress: progress, isLeft: false))
         }
-        #expect(HingeReveal.translation(progress: 0, isLeft: false).width == 10)
+        #expect(HingeReveal.translation(progress: 0, isLeft: false).width == 0)
         #expect(HingeReveal.translation(progress: 1, isLeft: false).width == 0)
         #expect(abs(HingeReveal.translation(progress: 1, isLeft: false).height) < 0.001)
         #expect(abs(HingeReveal.angle(progress: 5, isLeft: false)) < .pi / 60)
@@ -78,7 +78,7 @@ struct PaperMotionTests {
     @Test func sheetPivotRemainsInsideBothMovingJawsThroughoutReveal() {
         for size in [CGSize(width: 320, height: 430), CGSize(width: 460, height: 264)] {
             for left in [true, false] {
-                let pin = HingeReveal.grip(size: size, isLeft: left)
+                let pin = HingeReveal.suspension(size: size, isLeft: left)
                 for p in [CGFloat(0), 0.25, 0.5, 0.75, 1, 1.02] {
                     let sheet = HingeSheetEffect(progress: p, isLeft: left).effectValue(size: size)
                     let jaw = HingeAssemblyEffect(progress: p, isLeft: left).effectValue(size: size)

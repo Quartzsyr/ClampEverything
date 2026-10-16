@@ -13,6 +13,17 @@ import ClampCore
     }
     deinit { try? FileManager.default.removeItem(at: root) }
     func board() -> NSPasteboard { NSPasteboard(name: .init("ClampStoreTests-" + UUID().uuidString)) }
+    @Test func copyReportsSuccessOnlyWhenTheOriginalCanBeWritten() throws {
+        let pasteboard = board(); defer { pasteboard.releaseGlobally() }
+        let file = root.appendingPathComponent("report.pdf"); try Data("original".utf8).write(to: file)
+        var item = ClipItem(kind: .file, title: "report.pdf"); item.originalPath = file.path
+        #expect(store.copy(item, to: pasteboard))
+        #expect(pasteboard.string(forType: .fileURL) == file.absoluteString)
+        try FileManager.default.removeItem(at: file)
+        let before = pasteboard.changeCount
+        #expect(!store.copy(item, to: pasteboard))
+        #expect(pasteboard.changeCount == before)
+    }
     @Test func duplicateFileReferencesAndURLs() throws {
         let file = root.appendingPathComponent("file.txt"); try Data("source".utf8).write(to: file)
         store.importFiles([file, file]); #expect(store.active.count == 1)

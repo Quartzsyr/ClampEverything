@@ -18,7 +18,7 @@ if ! PYTHONPATH="$CLAMP_PROJECT/build/dmg-tools" python3 -c 'import ds_store, ma
     python3 -m pip install --cert /etc/ssl/cert.pem --target "$CLAMP_PROJECT/build/dmg-tools" -r "$CLAMP_PROJECT/scripts/dmg-requirements.txt"
 fi
 bash "$CLAMP_PROJECT/scripts/make-installer-icon.sh"
-swift -module-cache-path "$CLAMP_PROJECT/.build/module-cache" "$CLAMP_PROJECT/scripts/make-dmg-background.swift" "$CLAMP_PROJECT/build/dmg-background.png"
+swift -module-cache-path "$CLAMP_PROJECT/.build/module-cache" "$CLAMP_PROJECT/scripts/make-dmg-background.swift" "$CLAMP_PROJECT/build/dmg-background.png" "$CLAMP_PROJECT/docs/assets/installer/paper-arrow-v1.png"
 mkdir -p "$CLAMP_STAGE/volume"
 ditto "$CLAMP_APP" "$CLAMP_STAGE/volume/ClampEverything.app"
 # Finder metadata may be reattached to the build directory; clean the staged copy.
@@ -34,11 +34,23 @@ hdiutil create -volname "ClampEverything $CLAMP_VERSION" -srcfolder "$CLAMP_STAG
 hdiutil attach "$CLAMP_STAGE/layout.dmg" -nobrowse -mountpoint "$CLAMP_MOUNT" >/dev/null
 CLAMP_MOUNTED=true
 SetFile -a C "$CLAMP_MOUNT"
-PYTHONPATH="$CLAMP_PROJECT/build/dmg-tools" python3 "$CLAMP_PROJECT/scripts/configure-dmg.py" "$CLAMP_MOUNT"
+PYTHONPATH="$CLAMP_PROJECT/build/dmg-tools" python3 "$CLAMP_PROJECT/scripts/configure-dmg.py" "$CLAMP_MOUNT" "$CLAMP_STAGE/background.alias"
+swift -module-cache-path "$CLAMP_PROJECT/.build/module-cache" "$CLAMP_PROJECT/scripts/verify-dmg-background.swift" "$CLAMP_STAGE/background.alias" "$CLAMP_MOUNT/.background/background.png"
 hdiutil detach "$CLAMP_MOUNT" >/dev/null
 CLAMP_MOUNTED=false
 hdiutil convert "$CLAMP_STAGE/layout.dmg" -format UDZO -o "$CLAMP_PROJECT/build/$CLAMP_NAME" -ov
 swift -module-cache-path "$CLAMP_PROJECT/.build/module-cache" "$CLAMP_PROJECT/scripts/set-file-icon.swift" "$CLAMP_PROJECT/build/Installer.icns" "$CLAMP_PROJECT/build/$CLAMP_NAME"
 hdiutil verify "$CLAMP_PROJECT/build/$CLAMP_NAME"
+# Reattach at a DIFFERENT path: background lookup must survive relocation.
+CLAMP_MOUNT="$CLAMP_STAGE/final-mount"
+mkdir -p "$CLAMP_MOUNT"
+# Resolve the final compressed artifact with macOS itself.
+hdiutil attach "$CLAMP_PROJECT/build/$CLAMP_NAME" -readonly -nobrowse -mountpoint "$CLAMP_MOUNT" >/dev/null
+CLAMP_MOUNTED=true
+PYTHONPATH="$CLAMP_PROJECT/build/dmg-tools" python3 "$CLAMP_PROJECT/scripts/verify-dmg-layout.py" "$CLAMP_MOUNT" "$CLAMP_STAGE/final-background.alias"
+swift -module-cache-path "$CLAMP_PROJECT/.build/module-cache" "$CLAMP_PROJECT/scripts/verify-dmg-background.swift" "$CLAMP_STAGE/final-background.alias" "$CLAMP_MOUNT/.background/background.png"
+codesign --verify --deep --strict "$CLAMP_MOUNT/ClampEverything.app"
+hdiutil detach "$CLAMP_MOUNT" >/dev/null
+CLAMP_MOUNTED=false
 (cd "$CLAMP_PROJECT/build" && shasum -a 256 "$CLAMP_NAME" > "$CLAMP_NAME.sha256")
 echo "Built $CLAMP_PROJECT/build/$CLAMP_NAME"

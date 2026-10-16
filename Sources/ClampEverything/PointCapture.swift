@@ -11,6 +11,7 @@ struct PointTarget: Sendable {
     var bounds: CGRect? = nil
     var regions: [CGRect] = []
     var fileKind: ClipKind? = nil
+    var subjectImageBounds: CGRect? = nil
 }
 
 /// An image is frozen during pickup, never re-read at the drop destination.
@@ -18,6 +19,7 @@ struct PreparedPointTarget {
     let target: PointTarget
     let image: CGImage?
     var fileKind: ClipKind? = nil
+    var isSubject = false
 }
 
 struct PointCandidate {
@@ -31,13 +33,14 @@ struct PointCandidate {
     var selectionRect: CGRect?
     var textRegions: [CGRect] = []
     var fileKind: ClipKind? = nil
+    var thumbnail = false
 }
 
 enum PointCaptureError: LocalizedError {
     case unavailable, secure, permission, imagePermission
     var errorDescription: String? {
         switch self {
-        case .unavailable: return "这里没有可读取的内容。可先选中文字，或把文件拖到黄铜夹子。"
+        case .unavailable: return "这里没有可读取的内容。可先选中文字，或从菜单栏添加文件。"
         case .secure: return "此处是受保护的输入内容，不能夹取。"
         case .permission: return "请在设置 → 鼠标夹取中允许辅助功能。"
         case .imagePermission: return "截取图片区域需要屏幕录制权限，请在鼠标夹取设置中开启。"
@@ -151,21 +154,28 @@ enum PointCapture {
             return PointCandidate(role: role, url: targetURL, selectedText: selected, text: text,
                 title: boundary ? nil : (string(element, kAXTitleAttribute) ?? string(element, kAXDescriptionAttribute)),
                 rect: boundary ? nil : bounds(element), selectionRect: hasSelection ? selectionBounds(element) : nil,
-                textRegions: hasSelection || isText ? try textRegions(element, selected: hasSelection, text: text) : [], fileKind: kind)
+                textRegions: hasSelection || isText ? try textRegions(element, selected: hasSelection, text: text) : [], fileKind: kind,
+                thumbnail: ImageSubjectEligibility.isThumbnail(role: string(element, kAXRoleDescriptionAttribute),
+                    subrole: string(element, kAXSubroleAttribute), description: string(element, kAXDescriptionAttribute)))
         }
         return try resolve(candidates)
     }
 
     static func resolve(_ candidates: [PointCandidate]) throws -> PointTarget {
         guard !candidates.contains(where: \.secure) else { throw PointCaptureError.secure }
+        let subjectBounds = ImageSubjectEligibility.bounds(in: candidates)
         // A file keeps its identity; an explicit text selection beats a parent link.
         for candidate in candidates {
-            if let url = candidate.url, url.isFileURL { return PointTarget(payload: .file(url), title: url.lastPathComponent, bounds: candidate.rect, fileKind: candidate.fileKind) }
+            if let url = candidate.url, url.isFileURL { return PointTarget(payload: .file(url), title: url.lastPathComponent, bounds: candidate.rect, fileKind: candidate.fileKind,
+                    subjectImageBounds: candidate.fileKind == .image ? subjectBounds : nil) }
         }
         for candidate in candidates {
             if let text = candidate.selectedText, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 return PointTarget(payload: .text(text), title: "选中的文字", bounds: candidate.selectionRect ?? candidate.rect, regions: candidate.textRegions)
             }
+        }
+        if let subjectBounds, let candidate = candidates.first(where: { $0.role == kAXImageRole }) {
+            return PointTarget(payload: .image(subjectBounds), title: candidate.title ?? "夹取的图片", bounds: subjectBounds, subjectImageBounds: subjectBounds)
         }
         for candidate in candidates {
             if let url = candidate.url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
@@ -182,7 +192,8 @@ enum PointCapture {
             if [kAXImageRole, "AXButton", "AXDockItem", "AXMenuItem", "AXCell"].contains(candidate.role),
                let rect = candidate.rect, rect.width.isFinite, rect.height.isFinite,
                rect.origin.x.isFinite, rect.origin.y.isFinite, rect.width > 1, rect.height > 1 {
-                return PointTarget(payload: .image(rect), title: candidate.title ?? "夹取的图片", bounds: rect)
+                return PointTarget(payload: .image(rect), title: candidate.title ?? "夹取的图片", bounds: rect,
+                    subjectImageBounds: candidate.role == kAXImageRole ? subjectBounds : nil)
             }
         }
         throw PointCaptureError.unavailable

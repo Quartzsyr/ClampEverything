@@ -53,6 +53,7 @@ public struct ClipItem: Identifiable, Codable, Equatable, Sendable {
     public var bookmark: Data?
     public var originalPath: String?
     public var assetName: String?
+    public var imageIsCutout: Bool?
     public var text: String?
     public var link: String?
     public var groupID: UUID?
@@ -80,6 +81,7 @@ public struct Shortcut: Codable, Equatable {
     public init(keyCode: UInt32, modifiers: UInt32, label: String) { self.keyCode = keyCode; self.modifiers = modifiers; self.label = label }
 }
 public struct AppPreferences: Codable, Equatable {
+    public var showBrassClip = false
     public var hideInFullScreen = true
     public var showHiddenFiles = false
     public var shortcut: Shortcut?
@@ -94,11 +96,13 @@ public struct AppPreferences: Codable, Equatable {
     public var hoverToExpand = true
     public var hoverDelay: Double = 0.35
     public var defaultSide: ClipSide = .right
+    public var previewSizes = PreviewSizes()
 
     public init() {}
-    private enum CodingKeys: String, CodingKey { case hideInFullScreen, showHiddenFiles, shortcut, holdToClampEnabled, holdShortcut, folderTint, noteStock, motionIntensity, autoSnap, snapDistance, hoverToExpand, hoverDelay, defaultSide, tactileFeedback }
+    private enum CodingKeys: String, CodingKey { case showBrassClip, hideInFullScreen, showHiddenFiles, shortcut, holdToClampEnabled, holdShortcut, folderTint, noteStock, motionIntensity, autoSnap, snapDistance, hoverToExpand, hoverDelay, defaultSide, tactileFeedback, previewSizes }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        showBrassClip = try values.decodeIfPresent(Bool.self, forKey: .showBrassClip) ?? false
         hideInFullScreen = try values.decodeIfPresent(Bool.self, forKey: .hideInFullScreen) ?? true
         showHiddenFiles = try values.decodeIfPresent(Bool.self, forKey: .showHiddenFiles) ?? false
         shortcut = try values.decodeIfPresent(Shortcut.self, forKey: .shortcut)
@@ -116,6 +120,7 @@ public struct AppPreferences: Codable, Equatable {
         let delay = try values.decodeIfPresent(Double.self, forKey: .hoverDelay) ?? 0.35
         hoverDelay = delay.isFinite ? min(1.2, max(0.1, delay)) : 0.35
         defaultSide = (try? values.decodeIfPresent(ClipSide.self, forKey: .defaultSide)) ?? .right
+        previewSizes = (try? values.decodeIfPresent(PreviewSizes.self, forKey: .previewSizes)) ?? PreviewSizes()
         if !holdShortcut.isValid { holdShortcut = .option; holdToClampEnabled = false }
     }
 }

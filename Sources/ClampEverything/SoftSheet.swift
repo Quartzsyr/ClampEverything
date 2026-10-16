@@ -37,15 +37,22 @@ struct SoftImageSurface: View, Animatable {
     let image: NSImage
     var pull = PaperPull.resting
     var isLeft = false
-    var animatableData: AnimatablePair<CGFloat, CGFloat> {
-        get { AnimatablePair(pull.x, pull.y) }
-        set { pull = PaperPull(x: newValue.first, y: newValue.second) }
+    var boundLeft = false
+    var turnAmount: CGFloat = 0
+    var verticalOutset: CGFloat = 0
+    var horizontalOutset: CGFloat = 0
+    var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat> {
+        get { AnimatablePair(AnimatablePair(pull.x, pull.y), turnAmount) }
+        set { pull = PaperPull(x: newValue.first.first, y: newValue.first.second); turnAmount = newValue.second }
     }
     var body: some View {
-        Canvas { context, size in
+        Canvas { original, canvasSize in
+            var context = original
+            context.translateBy(x: horizontalOutset, y: verticalOutset)
+            let size = CGSize(width: max(1, canvasSize.width - horizontalOutset * 2), height: max(1, canvasSize.height - verticalOutset * 2))
             let texture = context.resolve(Image(nsImage: image))
             let rect = CGRect(origin: .zero, size: size)
-            guard abs(pull.x) + abs(pull.y) > 0.015 else { context.draw(texture, in: rect); return }
+            guard abs(pull.x) + abs(pull.y) > 0.015 || abs(turnAmount) > 0.001 else { context.draw(texture, in: rect); return }
             let columns = 10, rows = 14
             for row in 0..<rows {
                 for column in 0..<columns {
@@ -62,7 +69,10 @@ struct SoftImageSurface: View, Animatable {
         }.allowsHitTesting(false)
     }
     private func drawTriangle(_ source: [CGPoint], texture: GraphicsContext.ResolvedImage, rect: CGRect, context: GraphicsContext) {
-        let target = source.map { SoftSheetGeometry.point($0, size: rect.size, pull: pull, isLeft: isLeft) }
+        let target = source.map { point in
+            let bent = boundLeft ? LeftBindingPageGeometry.curlPoint(point, size: rect.size, pull: pull) : SoftSheetGeometry.point(point, size: rect.size, pull: pull, isLeft: isLeft)
+            return turnAmount == 0 ? bent : LeftBindingPageGeometry.project(bent, size: rect.size, amount: turnAmount)
+        }
         let sx = source[1].x - source[0].x, sy = source[2].y - source[0].y
         guard sx != 0, sy != 0 else { return }
         let a = (target[1].x - target[0].x) / sx, b = (target[1].y - target[0].y) / sx
