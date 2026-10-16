@@ -104,3 +104,16 @@ body:has(#app-dock:hover) .demo-status,body:has(#app-dock :focus-visible) .demo-
 }
 
 @media(prefers-reduced-motion:reduce){.app-window{animation:none}}
+
+.wallpaper{pointer-events:none;background-position:right center}
+.wallpaper-layer{position:absolute;inset:0;background-size:cover;background-position:right center;opacity:0;transition:opacity 1.2s ease-in-out}
+.wallpaper-layer.visible{opacity:1}
+.wallpaper-still .wallpaper-layer{transition:none}
+.wallpaper-settings{padding:0 0 16px;margin-bottom:18px;border-bottom:1px solid #87917a25}
+.wallpaper-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:4px 0 12px}
+.wallpaper-choices button{padding:4px;border:1px solid transparent;border-radius:8px;font-size:10px;min-width:0}
+.wallpaper-choices img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:5px;margin-bottom:6px}
+.wallpaper-choices button[aria-pressed=true]{border-color:#829671;background:#b7c8a629}
+.wallpaper-choices button:hover{background:#ffffff90}
+.wallpaper-next{padding:7px 10px;border-radius:7px;background:#ffffffa8;font-size:11px}
+@media(prefers-reduced-motion:reduce){.wallpaper-layer{transition:none}}
