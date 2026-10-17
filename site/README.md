@@ -6,6 +6,8 @@
 
 ## 桌面与应用逻辑
 
+- 桌面右上方的「安装屏幕夹子」磁盘可拖动摆放；单击选择，双击（或选中后按 Enter）打开安装指南。指南含真实 DMG 下载按钮、版本、大小、Apple Silicon / macOS 14+ 要求、拖入应用程序和首次授权步骤。版本与下载地址随发布时生成的 `assets/releases.json` 更新。
+
 - 桌面直接放置 PDF、Word、视频、图片、文件夹、代码、录音、归档、文本及数据文件。普通鼠标单击选择、双击打开；按住 ⌥ Option（Windows / Linux 为 Alt）才变成夹子，按下内容并拖动，松开鼠标放置。
 - 桌面图标可直接拖动摆放，位置保存在当前浏览器；拖到访达会复制文件，拖到信息会成为附件草稿。Esc 取消拖动，设置可重新整理桌面。
 - 信息窗口里的文字直接读取实际 TXT 文件，收到的照片、PDF 与视频来自同一组真实文件。输入框可输入，Enter 发送、Shift+Enter 换行；备忘录正文可直接编辑。新文字在浏览器内生成为独立 TXT 文件，按原文字节计算 SHA-256，可夹取、复制、拖出或下载。夹取后原消息与原附件保留。
@@ -20,7 +22,7 @@
 
 ## 原生素材
 
-`assets/files/` 保存专门制作的真实 PNG、TXT、三页 PDF、三页 DOCX、Swift、HTML、WAV、MOV、DAT、ZIP 及示例文件夹。`catalog.json` 记录每个原文件的 MIME、大小与 SHA-256，启动时先加载并校验，再创建浏览器 `File` 对象。桌面、聊天附件、夹项与拖出副本引用相同文件身份；拖出携带原文件字节，右键可下载原件。它们先由桌面端 `ClipStore.importFiles` 读取，再由实际 `CardSurface` / `ItemBody` / `DocumentPages` / `PhotoBody` 绘制。
+`assets/files/` 保存专门制作的真实 PNG、TXT、三页 PDF、三页 DOCX、Swift、HTML、WAV、MOV、DAT、ZIP 及示例文件夹。`catalog.json` 记录每个原文件的 MIME、大小与 SHA-256，启动时只读取文件目录与轻量预览，桌面不等待整批原件。悬停 160ms 后预取，打开、播放或夹取时按需读取；并发操作共享下载，SHA-256 与长度校验通过后才创建浏览器 `File` 对象。照片使用从真实原图生成的 WebP 缩略图，打开后换成原图；默认视频只显示海报，不请求原片。首次夹取遇到慢网时自动等待原件，Esc 可取消。桌面、聊天附件、夹项与拖出副本引用相同文件身份；拖出携带原文件字节，右键可下载原件。它们先由桌面端 `ClipStore.importFiles` 读取，再由实际 `CardSurface` / `ItemBody` / `DocumentPages` / `PhotoBody` 绘制。
 
 `assets/native/` 保存这些原生组件的透明离屏渲染。文字字体、文件图标、目录、纸面磨损、金属夹及夹口阴影来自原生组件。`provenance.json` 记录源文件摘要，`manifest.json` 记录原文件与图像的对应关系。
 
@@ -143,3 +145,7 @@ Dock 圆点按当前实际存在的窗口计算：关闭最后一个窗口后熄
 夹子助手提供本地预设问答，支持操作方法、类型、复制、保存和撤销，并发送对应原文件。打开、选择、收件、发送、复制、保存、翻页、播放、下载、Dock 收纳和废纸篓恢复使用独立的局部反馈。删除结果提供撤销，减少动态效果时保留状态与标记。无自动音效。
 
 制作资料使用 `python3 site/scripts/prepare-onboarding.py`；原生导出使用 `CLAMP_WEBSITE_EXISTING_FILES=1 .build/debug/ClampEverything --export-website "$PWD/site/assets/native"`，以保留新文件。随后运行 `finalize-onboarding.py`、`prepare-native-media.cjs` 和 `prepare-files.py`。Word 可用文档技能的 `render_docx.py` 复核；字体配置需包含系统中文字体。浏览器流程检查为 `site/tests/onboarding.cjs`。
+
+## 按需加载与安装入口验证
+
+`node --test tests/*.test.mjs` 验证目录初始化不读取原件、并发下载去重、校验失败后重试及原件身份。`tests/lazy-install.cjs` 使用 Playwright 延迟原件响应，检查首屏零原件下载、首次夹取自动完成、Esc 取消、视频首次播放与安装下载；支持 `ENGINE=webkit`。`tests/onboarding.cjs` 回归真实 PDF 复制翻页、Word / 代码编辑、拖入废纸篓与撤销。

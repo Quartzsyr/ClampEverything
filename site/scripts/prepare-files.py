@@ -59,5 +59,5 @@ for entry in entries:
     if entry['name'].endswith('.zip'):
         with zipfile.ZipFile(files / entry['name']) as archive:
             archives[entry['path']] = [dict(name=i.filename, size=i.file_size, directory=i.is_dir()) for i in archive.infolist()]
-catalog = dict(archives=archives, files=entries, folders=[dict(name='屏幕夹子入门资料', children=[dict(name=p.name, path='../files/屏幕夹子入门资料/'+p.name) for p in sorted((files/'屏幕夹子入门资料').iterdir()) if p.is_file()])], previews={'word':dict(path='../files/我的桌面收纳计划.preview.html', sourceSHA256=hashlib.sha256(word.read_bytes()).hexdigest())})
+catalog = dict(archives=archives, files=entries, folders=[dict(name='屏幕夹子入门资料', children=[dict(name=p.name, path='../files/屏幕夹子入门资料/'+p.name) for p in sorted((files/'屏幕夹子入门资料').iterdir()) if p.is_file()])], previews={'note':dict(text=(root/'assets/native'/next(item['file'] for item in manifest['items'] if item['kind']=='note')).read_text()), 'word':dict(path='../files/我的桌面收纳计划.preview.html', sourceSHA256=hashlib.sha256(word.read_bytes()).hexdigest())})
 (files / 'catalog.json').write_text(json.dumps(catalog, ensure_ascii=False, indent=2)+'\n')

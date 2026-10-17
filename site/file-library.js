@@ -1,7 +1,7 @@
 // Every source resolves to the bytes of an authored demo file. Native PNGs are
 // thumbnails only: opening, downloading and drag-copying use this same File.
 export class FileLibrary {
-  constructor(nativeURL) { this.url = nativeURL; this.records = new Map(); this.failures = new Map(); this.localItems = new Map(); }
+  constructor(nativeURL) { this.url = nativeURL; this.records = new Map(); this.failures = new Map(); this.localItems = new Map(); this.pending = new Map(); }
   async register(file,template,details={}) {
     const bytes=await file.arrayBuffer(),sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
     const path=`local/${sha256}/${encodeURIComponent(file.name)}`,existing=this.localItems.get(path);
@@ -43,19 +43,25 @@ export class FileLibrary {
     if (!response.ok) throw new Error('演示文件目录加载失败');
     this.catalog = await response.json();
     for(const entry of this.catalog.files)this.records.set(entry.path,{...entry,file:null,href:this.url(entry.path)});
-    const results=await Promise.allSettled(this.catalog.files.map(entry=>this.read(entry)));
-    results.forEach((result,index)=>{if(result.status==='rejected')this.failures.set(this.catalog.files[index].path,result.reason);});
     for (const item of items) {
       const record = this.get(item);
       if (!record) throw new Error(`缺少原文件：${item.title}`);
       item.fileId = record.sha256;
     }
   }
-  async read(entry) {
+  read(entry) {
+    const loaded=this.records.get(entry.path);if(loaded?.file)return Promise.resolve(loaded);
+    if(this.pending.has(entry.path))return this.pending.get(entry.path);
+    const request=this.readBytes(entry).catch(error=>{this.failures.set(entry.path,error);throw error;}).finally(()=>this.pending.delete(entry.path));
+    this.pending.set(entry.path,request);return request;
+  }
+  // Speculative reads share the verified download with opens and captures.
+  prefetch(item) { return this.ensure(item).catch(()=>null); }
+  async readBytes(entry) {
     let error;
     for(let attempt=0;attempt<2;attempt++)try{
       const url=new URL(this.url(entry.bytesPath||entry.path));url.searchParams.set('v',entry.sha256.slice(0,16));
-      const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000)});
+      const response=await fetch(url,{cache:attempt?'reload':'default',signal:AbortSignal.timeout(45000)});
       if(!response.ok)throw new Error(`文件加载失败：${entry.name}`);
       const bytes=await response.arrayBuffer();
       if(!globalThis.crypto?.subtle)throw new Error('请使用 HTTPS 打开网页');

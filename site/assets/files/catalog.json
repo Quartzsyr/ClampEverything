@@ -217,6 +217,9 @@
     }
   ],
   "previews": {
+    "note": {
+      "text": "随手夹取的小提示\n\n按住 Option，鼠标变成夹子。\n瞄准内容，按下并拖到需要的位置。\n靠边收起，悬停展开。\n\n点纸张复制，拖出原文件继续用。\n试试向助手发送“怎么用”或“发我指南”。\n"
+    },
     "word": {
       "path": "../files/我的桌面收纳计划.preview.html",
       "sourceSHA256": "c5a507e56925fd2a6e8d318dd3f4b957e13cd7c5f4b3cbc934a6993374e35fa9"

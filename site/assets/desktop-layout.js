@@ -2,7 +2,7 @@
 // Leave the right file columns and the bottom Dock free on desktop displays.
 export function desktopScene(width,height){
  const bottom=Math.max(260,height-170),top=32,gap=22;
- if(width>=1180&&height>=800){
+ if(width>=980){
   const left=Math.round(Math.max(28,width*.035)),side=Math.round(Math.min(380,width*.25));
   const mainX=left+side+28,mainWidth=Math.min(960,width-244-mainX);
   const mainHeight=Math.round(Math.min(690,(bottom-top-gap)*.66));

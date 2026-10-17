@@ -40,7 +40,8 @@
       "title": "山间湖泊.png",
       "width": 320,
       "pixelWidth": 1440,
-      "pixelHeight": 960
+      "pixelHeight": 960,
+      "thumbnail": "lake-thumb.webp"
     },
     {
       "compactLeft": "note-compact-left.png",
@@ -333,7 +334,8 @@
       "title": "云下牧场.jpg",
       "width": 320,
       "pixelWidth": 1440,
-      "pixelHeight": 960
+      "pixelHeight": 960,
+      "thumbnail": "meadow-thumb.webp"
     }
   ]
 }

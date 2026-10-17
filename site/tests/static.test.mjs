@@ -6,6 +6,7 @@ const root=new URL('../',import.meta.url),native=new URL('assets/native/',root);
 test('demo catalog identifies real files, folder entries and a Word preview derived from its original',async()=>{
  const catalog=JSON.parse(await readFile(new URL('assets/files/catalog.json',root),'utf8'));
  assert.equal(catalog.files.length,12);
+ const note=catalog.files.find(entry=>entry.name.endsWith('.txt'));assert.equal(catalog.previews.note.text,await readFile(new URL(note.path,native),'utf8'));
  for(const entry of catalog.files){
   const bytes=await readFile(new URL(entry.path,native));
   assert.equal(bytes.length,entry.size,entry.name);
@@ -25,6 +26,7 @@ test('all twelve types use existing native renderings and real source files',asy
  const manifest=JSON.parse(await readFile(new URL('manifest.json',native),'utf8'));
  assert.equal(manifest.items.length,12);assert.equal(manifest.padding,32);assert.match(manifest.renderer,/CardSurface/);
  for(const item of [...manifest.items,...(manifest.extraItems||[])]){assert.ok(item.width>100&&item.height>100);assert.ok((await stat(new URL(item.file,native))).isFile());
+ if(item.kind==='photo'){assert.ok(item.thumbnail);assert.ok((await stat(new URL(item.thumbnail,native))).size<70000,'thumbnail avoids reading the original image');}
  for(const path of [item.left,item.right,item.compactLeft,item.compactRight,item.source,...(item.pages||[]).flatMap(p=>[p.left,p.right,p.surfaceLeft,p.surfaceRight])]){
  const data=await readFile(new URL(path,native));assert.ok(data.subarray(0,3).toString('hex')==='ffd8ff'||data.subarray(1,4).toString()==='PNG'||(data.subarray(0,4).toString()==='RIFF'&&data.subarray(8,12).toString()==='WEBP'),path);assert.ok(data.length>100,path);
  }

@@ -1,16 +1,16 @@
 import { createFeedback } from './assets/feedback.js';
 import { createWallpapers, WALLPAPERS } from './assets/wallpapers.js';
 import { bindSystemMenu } from './assets/system-menu.js';
-import { createDesktop } from './desktop.js?v=20261017-onboarding';
+import { createDesktop } from './desktop.js?v=20261017-lazy-install';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
-import { FileLibrary } from './file-library.js?v=20261016-dock';
+import { FileLibrary } from './file-library.js?v=20261017-lazy-install';
 import { HoldGesture } from './hold-gesture.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const nativeBase = new URL('./assets/native/', import.meta.url);
-const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261017-onboarding');return url.href;};
+const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261017-lazy-install');return url.href;};
 const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
@@ -35,7 +35,7 @@ const status = (title,detail='',options={}) => {
   statusTimer=setTimeout(()=>{element.classList.remove('visible');element.classList.remove('has-action');},options.action?8000:3200);
 };
 const pad = () => manifest.padding ?? 32;
-const sourceURL = item => nativeURL(item.source);
+const sourceURL = item => nativeURL(item.thumbnail||item.source);
 const sprite = (item, side, compact=false, page=0) => nativeURL(compact ? side==='left'?item.compactLeft:item.compactRight : item.pages?.[page]?.[side] || item[side]);
 const dimensions = (obj, compact=false) => ({width:compact?64:obj.item.width,height:compact?60:obj.item.height});
 const hookX = (obj,compact=false) => obj.side==='left'?44:(compact?20:obj.item.width-44);
@@ -154,14 +154,18 @@ async function grasp(item,source,to,token){
 }
 async function beginCapture(event,source){
   if(event.button!==0||manual)return;
-  if(!files.get(source.item)?.file){event.preventDefault();status('正在重新读取文件',source.item.title);files.ensure(source.item).then(()=>status('文件已就绪','请再次夹取')).catch(()=>status('文件暂时不可用','其他内容仍可正常夹取'));return;}
   if(!gesture.press())return;
   event.preventDefault();run++;const token=run;
   hasPointer=true;point.x=event.clientX;point.y=event.clientY;
   manual={item:source.item,source,token,start:{x:event.clientX,y:event.clientY},ready:false,released:false};
   environment.clearAim();document.dispatchEvent(new Event('clamp-close-system-menu'));source.element.classList.add('being-clamped');source.element.setPointerCapture(event.pointerId);
   if(source.prepare){try{const item=await source.prepare();if(!alive(token))return;source.item=item;manual.item=item;}catch{if(alive(token)){stopDemo(false);status('文字暂时无法保存','请稍后再试');}return;}}
-  grasp(source.item,source,manual.start,token).then(ok=>{if(ok&&manual?.token===token){manual.ready=true;source.element.classList.remove('aiming','being-clamped');if(manual.released)finishManual();}});
+  if(!files.get(source.item)?.file)status('正在读取原件',source.item.title+' · 松开鼠标后会自动夹住');
+  const current=manual;
+  try{
+    const [ok]=await Promise.all([grasp(source.item,source,current.start,token),files.ensure(source.item)]);
+    if(ok&&manual?.token===token){manual.ready=true;source.element.classList.remove('aiming','being-clamped');if(manual.released)finishManual();}
+  }catch{if(alive(token)){stopDemo(false);status('未能读取原件','请再次夹取重试，其他文件仍可使用');}}
 }
 async function copyItem(item,target){
   try{await files.ensure(item);}catch{status('未能复制','原文件暂时不可用，请稍后重试');return;}
