@@ -1,6 +1,7 @@
+import { createFeedback } from './assets/feedback.js';
 import { createWallpapers, WALLPAPERS } from './assets/wallpapers.js';
 import { bindSystemMenu } from './assets/system-menu.js';
-import { createDesktop } from './desktop.js?v=20261017-real-media';
+import { createDesktop } from './desktop.js?v=20261017-onboarding';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
 import { FileLibrary } from './file-library.js?v=20261016-dock';
 import { HoldGesture } from './hold-gesture.js';
@@ -9,7 +10,7 @@ const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const nativeBase = new URL('./assets/native/', import.meta.url);
-const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261017-real-media');return url.href;};
+const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261017-onboarding');return url.href;};
 const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
@@ -22,12 +23,16 @@ let hasPointer = false;
 const cursor = $('#demo-cursor');
 const point = {x:0,y:0};
 const animated = () => motion && !reduced.matches;
+const feedback=createFeedback({animated});
 const wallpapers=createWallpapers({animated,busy:()=>!!manual||!!dragging||!!document.querySelector('.interacting,[data-window-motion]')});
 const escapeHTML = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pause = ms => new Promise(resolve=>setTimeout(resolve, animated()?ms:Math.min(ms,100)));
-const status = (title,detail='') => {
-  clearTimeout(statusTimer);const element=$('#demo-status');element.innerHTML=`<b>${escapeHTML(title)}</b>${detail?`<small>${escapeHTML(detail)}</small>`:''}`;element.classList.add('visible');
-  statusTimer=setTimeout(()=>element.classList.remove('visible'),3600);
+const status = (title,detail='',options={}) => {
+  clearTimeout(statusTimer);const element=$('#demo-status');element.dataset.tone=options.kind||'';
+  element.innerHTML=`<span class="status-copy"><b>${escapeHTML(title)}</b>${detail?`<small>${escapeHTML(detail)}</small>`:''}</span>${options.action?`<button type="button">${escapeHTML(options.action.label)}</button>`:''}`;
+  element.classList.toggle('has-action',!!options.action);element.classList.add('visible');
+  if(options.action)$('button',element).onclick=()=>{element.classList.remove('visible');options.action.run();};
+  statusTimer=setTimeout(()=>{element.classList.remove('visible');element.classList.remove('has-action');},options.action?8000:3200);
 };
 const pad = () => manifest.padding ?? 32;
 const sourceURL = item => nativeURL(item.source);
@@ -67,8 +72,8 @@ function makeObject(item,{x,y,side='left',compact=false,docked=true,initial=fals
     dragging={obj,id:e.pointerId,start:{x:e.clientX,y:e.clientY},x:obj.x,y:obj.y,moved:false,lastX:e.clientX,lastY:e.clientY,wasCompact:obj.compact};grip.setPointerCapture(e.pointerId);el.style.zIndex=++z;
   });
   obj.compactButton.addEventListener('click',()=>setExpanded(obj,true));
-  obj.expandedButton.addEventListener('click',()=>{if(!obj.busy)copyItem(obj.item);});
-  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}if(!files.writeDrag(event.dataTransfer,obj.item))event.preventDefault();});
+  obj.expandedButton.addEventListener('click',()=>{if(!obj.busy)copyItem(obj.item,obj.expandedButton);});
+  obj.expandedButton.draggable=true;obj.expandedButton.addEventListener('dragstart',event=>{if(manual||obj.busy){event.preventDefault();return;}if(!files.writeDrag(event.dataTransfer,obj.item))event.preventDefault();else feedback.play('copy',obj.expandedButton);});
   for(const surface of [obj.compactButton,obj.expandedButton,grip]){
     surface.addEventListener('pointerenter',()=>{clearTimeout(obj.leaveTimer);if(obj.compact&&!dragging&&!manual){clearTimeout(obj.hoverTimer);obj.hoverTimer=setTimeout(()=>setExpanded(obj,true,true),350);}});
     surface.addEventListener('pointerleave',()=>{clearTimeout(obj.hoverTimer);if(!obj.sticky&&!dragging){obj.leaveTimer=setTimeout(()=>setExpanded(obj,false),450);}});
@@ -94,13 +99,13 @@ async function turnPage(obj,step) {
   obj.expandedButton.append(old);obj.page=next;image.src=sprite(obj.item,obj.side,false,next);
   if(obj.item.previewPages)renderSprite(obj,obj.expandedButton,false);
   if(animated())await old.animate([{transform:'perspective(850px) rotateY(0deg)',opacity:1},{transform:`perspective(850px) rotateY(${step>0?-105:105}deg)`,opacity:0}],{duration:480,easing:'cubic-bezier(.25,.6,.3,1)',fill:'forwards'}).finished;
-  old.remove();obj.busy=false;render(obj);status(obj.item.title,`原文件第 ${obj.page+1} 页`);
+  old.remove();obj.busy=false;render(obj);feedback.play('page',obj.expandedButton);status(obj.item.title,`原文件第 ${obj.page+1} 页`,{kind:'page'});
 }
 function moveDrag(e){const d=dragging;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.start.x,dy=e.clientY-d.start.y;if(Math.hypot(dx,dy)>4)d.moved=true;if(!d.moved)return;d.obj.x=d.x+dx;d.obj.y=d.y+dy;d.obj.el.classList.add('moving');d.obj.el.style.setProperty('--angle',`${clamp((e.clientX-d.lastX)*.3,-7,7)}deg`);d.lastX=e.clientX;d.lastY=e.clientY;render(d.obj);}
 function endDrag(){
   const d=dragging;if(!d)return;dragging=null;d.obj.el.classList.remove('moving');d.obj.el.style.setProperty('--angle','0deg');
   if(!d.moved){setExpanded(d.obj,d.wasCompact);return;}
-  if(environment.isTrashPoint(d.lastX,d.lastY)){environment.discard({item:d.obj.item,x:d.obj.x,y:d.obj.y,side:d.obj.side,compact:d.obj.compact,docked:d.obj.docked,page:d.obj.page});d.obj.el.remove();objects.delete(d.obj.id);status('已移到废纸篓',d.obj.item.title);return;}
+  if(environment.isTrashPoint(d.lastX,d.lastY)){environment.discard({item:d.obj.item,x:d.obj.x,y:d.obj.y,side:d.obj.side,compact:d.obj.compact,docked:d.obj.docked,page:d.obj.page});feedback.move('remove',d.obj.compact?d.obj.compactButton:d.obj.expandedButton,$('[data-app=trash]'));d.obj.el.remove();feedback.cleanup();objects.delete(d.obj.id);status('已移到废纸篓',d.obj.item.title,{kind:'remove',action:{label:'撤销',run:()=>environment.undoTrash()}});return;}
   const side=d.lastX<42?'left':d.lastX>innerWidth-42?'right':null;d.obj.docked=!!side;
   if(side){d.obj.side=side;d.obj.x=side==='left'?44:innerWidth-44;render(d.obj);setExpanded(d.obj,false);}else render(d.obj);
 }
@@ -121,9 +126,9 @@ function syncCapture(){
   cursorAt(point.x,point.y,manual?.ready?'closed':'open');
 }
 function stopDemo(announce=true){
-  run++;gesture.cancel();if(manual){manual.source?.element.classList.remove('aiming','being-clamped');manual=null;}
+  const canceledSource=manual?.source?.element;run++;gesture.cancel();if(manual){manual.source?.element.classList.remove('aiming','being-clamped');manual=null;}
   cursor.classList.remove('holding');environment?.clearAim();$('#flight-layer').replaceChildren();syncCapture();
-  if(announce)status('已取消夹取','松开 Option，再按住即可重新夹取');
+  if(announce){feedback.play('cancel',canceledSource||$('#demo-status'));status('已取消夹取','松开 Option，再按住即可重新夹取',{kind:'cancel'});}
 }
 function modifierDown(event){
   if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='m'&&dialog.open){event.preventDefault?.();environment.minimizePanel(dialog,dialog.dataset.panelTitle);return;}
@@ -158,13 +163,13 @@ async function beginCapture(event,source){
   if(source.prepare){try{const item=await source.prepare();if(!alive(token))return;source.item=item;manual.item=item;}catch{if(alive(token)){stopDemo(false);status('文字暂时无法保存','请稍后再试');}return;}}
   grasp(source.item,source,manual.start,token).then(ok=>{if(ok&&manual?.token===token){manual.ready=true;source.element.classList.remove('aiming','being-clamped');if(manual.released)finishManual();}});
 }
-async function copyItem(item){
+async function copyItem(item,target){
   try{await files.ensure(item);}catch{status('未能复制','原文件暂时不可用，请稍后重试');return;}
   environment.clipboard=item;
   try{if(item.kind==='note'||item.kind==='code'){await navigator.clipboard?.writeText(await files.text(item));}
   else if(item.kind==='photo'&&window.ClipboardItem){await navigator.clipboard?.write([new ClipboardItem({'image/png':files.get(item).file})]);}}
   catch{/* Browser file clipboard remains available to the desktop apps. */}
-  status('已复制',item.title);
+  feedback.play('copy',target||[...objects.values()].find(obj=>obj.item.fileId===item.fileId)?.expandedButton);status('已复制',`${item.title} · 可粘贴到网页访达或信息`,{kind:'copy'});
 }
 function showAbout(){showDialog('屏幕夹子',`<div class="about-app"><img src="./assets/app-icon.webp" alt=""><div><h2>把灵感，夹在手边。</h2><p>文字、照片、文稿与文件，随手夹住，留在眼前。</p></div></div><a class="download" href="https://github.com/Quartzsyr/ClampEverything/releases/download/v1.7.16/ClampEverything-1.7.16-arm64.dmg">下载 Mac 版 · v1.7.16 ↓</a><p>Apple Silicon · macOS 14+ · 13.9 MiB</p><p class="release-links"><a href="https://github.com/Quartzsyr/ClampEverything/releases/tag/v1.7.16" target="_blank" rel="noopener">详细更新说明 ↗</a><a href="https://github.com/Quartzsyr/ClampEverything/releases/download/v1.7.16/ClampEverything-1.7.16-arm64.dmg.sha256">SHA-256 校验</a></p><p class="release-signing">开发签名，尚未经过 Apple 公证。</p><div class="developer"><b>Quartz</b><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a></div>`);}
 function showDeveloper(){showDialog('开发者信息',`<div class="developer-profile"><img src="./assets/app-icon.webp" alt=""><h2>Quartz</h2><p>UESTC</p><a href="mailto:SYRQuartz@gmail.com">SYRQuartz@gmail.com</a><small>屏幕夹子 · Clamp Everything</small><a href="https://github.com/Quartzsyr/ClampEverything" target="_blank" rel="noopener">GitHub 项目 ↗</a></div>`);}
@@ -223,11 +228,11 @@ function finishManual(){
   const x=edge?(edge==='left'?44:innerWidth-44):clamp(destination.x,hook+5,innerWidth-current.item.width+hook-5);
   const desktopTop=$('#desktop').getBoundingClientRect().top;
   const obj=makeObject(current.item,{x,y:clamp(destination.y-desktopTop,26,Math.max(26,innerHeight-desktopTop-(current.item.height-26)-150)),side,compact:!!edge,docked:!!edge});
-  obj.el.style.zIndex=++z;current.source.element.classList.remove('aiming','being-clamped');manual=null;gesture.cancel();syncCapture();cursor.classList.remove('holding');status('已夹住',current.item.title);
+  obj.el.style.zIndex=++z;current.source.element.classList.remove('aiming','being-clamped');manual=null;gesture.cancel();syncCapture();cursor.classList.remove('holding');feedback.play(edge?'pin':'receive',edge?obj.compactButton:obj.expandedButton);status(edge?'已收在屏幕边缘':'已夹在手边',current.item.title,{kind:'pin'});
 }
 async function init(){
   document.body.classList.add('load-pending');const response=await fetch(nativeURL('manifest.json'),{cache:'no-store'});if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();await files.load([...manifest.items,...(manifest.extraItems||[])]);
-  environment=createDesktop({manifest,nativeURL,files,animated,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
+  environment=createDesktop({manifest,nativeURL,files,animated,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,feedback,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
   bind();await environment.mount();document.body.classList.remove('load-pending');if(files.failures.size)status('桌面已就绪',`${files.failures.size} 个文件暂时不可用，其他内容可继续使用；再次夹取会重试`);else status('按住 ⌥ Option，随手夹取','普通鼠标单击选择、双击打开；按住 Option 夹取，松开鼠标放置');
 }
 function updateClock(){$('#clock').textContent=new Intl.DateTimeFormat('zh-CN',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());}updateClock();setInterval(updateClock,30000);

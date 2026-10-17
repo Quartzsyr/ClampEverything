@@ -135,3 +135,11 @@ Dock 圆点按当前实际存在的窗口计算：关闭最后一个窗口后熄
 2026-10-17 更新为用户提供的两张风景实拍照片和 109 秒实际操作录屏。宣传视频增加不遮挡桌面的底部品牌字幕条，字幕逐段说明夹取、翻页、收纳和跨窗口使用，并在结尾提供下载网址。默认播放器、聊天视频附件及下载网页中的视频共用原文件。
 
 照片夹取样式由原生 CardSurface 重新导出；聊天中可轮流获取两张照片，在周末旅行文件夹中也可打开、夹取或拖出。素材制作与字幕记录见 `media-source/README.md`。
+
+## 产品说明资料与操作反馈
+
+网页桌面现在使用实际产品资料：三页快速上手 PDF、三页可编辑收纳计划 DOCX、操作便笺、完整 SwiftUI 便笺示例、JSON 整理清单，以及约 26 秒中文合成语音讲解。资料夹与 ZIP 使用同一组实际文件，素材包额外包含讲解文字稿。实拍照片和真实操作宣传视频保留。
+
+夹子助手提供本地预设问答，支持操作方法、类型、复制、保存和撤销，并发送对应原文件。打开、选择、收件、发送、复制、保存、翻页、播放、下载、Dock 收纳和废纸篓恢复使用独立的局部反馈。删除结果提供撤销，减少动态效果时保留状态与标记。无自动音效。
+
+制作资料使用 `python3 site/scripts/prepare-onboarding.py`；原生导出使用 `CLAMP_WEBSITE_EXISTING_FILES=1 .build/debug/ClampEverything --export-website "$PWD/site/assets/native"`，以保留新文件。随后运行 `finalize-onboarding.py`、`prepare-native-media.cjs` 和 `prepare-files.py`。Word 可用文档技能的 `render_docx.py` 复核；字体配置需包含系统中文字体。浏览器流程检查为 `site/tests/onboarding.cjs`。

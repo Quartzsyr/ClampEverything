@@ -1,66 +1,91 @@
 {
   "archives": {
-    "../files/周末旅行.zip": [
+    "../files/屏幕夹子入门资料.zip": [
       {
-        "name": "周末旅行/LittleNote.swift",
-        "size": 156,
+        "name": "屏幕夹子入门资料/QuickNote.swift",
+        "size": 1035,
         "directory": false
       },
       {
-        "name": "周末旅行/云下牧场.jpg",
+        "name": "屏幕夹子入门资料/云下牧场.jpg",
         "size": 405789,
         "directory": false
       },
       {
-        "name": "周末旅行/出行计划.docx",
-        "size": 4084,
+        "name": "屏幕夹子入门资料/夹取操作提示.txt",
+        "size": 252,
         "directory": false
       },
       {
-        "name": "周末旅行/周末的小计划.txt",
-        "size": 111,
+        "name": "屏幕夹子入门资料/夹取操作讲解.wav",
+        "size": 1166488,
         "directory": false
       },
       {
-        "name": "周末旅行/山间湖泊.png",
+        "name": "屏幕夹子入门资料/屏幕夹子快速上手.pdf",
+        "size": 698803,
+        "directory": false
+      },
+      {
+        "name": "屏幕夹子入门资料/山间湖泊.png",
         "size": 1675763,
         "directory": false
       },
       {
-        "name": "周末旅行/旅行手记.pdf",
-        "size": 184051,
+        "name": "屏幕夹子入门资料/我的桌面收纳计划.docx",
+        "size": 37659,
+        "directory": false
+      },
+      {
+        "name": "屏幕夹子入门资料/桌面整理示例.json",
+        "size": 713,
         "directory": false
       }
     ],
-    "../files/旅行资料.zip": [
+    "../files/屏幕夹子演示素材包.zip": [
       {
-        "name": "周末旅行/LittleNote.swift",
-        "size": 156,
+        "name": "屏幕夹子入门资料/QuickNote.swift",
+        "size": 1035,
         "directory": false
       },
       {
-        "name": "周末旅行/云下牧场.jpg",
+        "name": "屏幕夹子入门资料/云下牧场.jpg",
         "size": 405789,
         "directory": false
       },
       {
-        "name": "周末旅行/出行计划.docx",
-        "size": 4084,
+        "name": "屏幕夹子入门资料/夹取操作提示.txt",
+        "size": 252,
         "directory": false
       },
       {
-        "name": "周末旅行/周末的小计划.txt",
-        "size": 111,
+        "name": "屏幕夹子入门资料/夹取操作讲解.wav",
+        "size": 1166488,
         "directory": false
       },
       {
-        "name": "周末旅行/山间湖泊.png",
+        "name": "屏幕夹子入门资料/屏幕夹子快速上手.pdf",
+        "size": 698803,
+        "directory": false
+      },
+      {
+        "name": "屏幕夹子入门资料/山间湖泊.png",
         "size": 1675763,
         "directory": false
       },
       {
-        "name": "周末旅行/旅行手记.pdf",
-        "size": 184051,
+        "name": "屏幕夹子入门资料/我的桌面收纳计划.docx",
+        "size": 37659,
+        "directory": false
+      },
+      {
+        "name": "屏幕夹子入门资料/桌面整理示例.json",
+        "size": 713,
+        "directory": false
+      },
+      {
+        "name": "屏幕夹子入门资料/操作讲解文字稿.txt",
+        "size": 406,
         "directory": false
       }
     ]
@@ -74,46 +99,46 @@
       "sha256": "cf11549bf3250dea5b967b6ad1460b5a006b274762f7f7abf2ce8c8002a6e374"
     },
     {
-      "path": "../files/周末的小计划.txt",
-      "name": "周末的小计划.txt",
-      "size": 111,
+      "path": "../files/夹取操作提示.txt",
+      "name": "夹取操作提示.txt",
+      "size": 252,
       "mime": "text/plain",
-      "sha256": "5c7c5d531ea3475b107bdc6da4ac989887e656c523a2ad89ba706b483982c18b"
+      "sha256": "46801ecc05b8387aee2522b1f5a96510725ea7b19e45722bed44dc8f037c60b0"
     },
     {
-      "path": "../files/旅行手记.pdf",
-      "name": "旅行手记.pdf",
-      "size": 184051,
+      "path": "../files/屏幕夹子快速上手.pdf",
+      "name": "屏幕夹子快速上手.pdf",
+      "size": 698803,
       "mime": "application/pdf",
-      "sha256": "c4353cdf29348191838e1ee925d6e3221aa25d6c6c81954a07b3ef643e927a1c"
+      "sha256": "9993a1cb84b17bb25d52f96c5a6e374ff8eba88b58604cf9fd867b1b18c81b03"
     },
     {
-      "path": "../files/出行计划.docx",
-      "name": "出行计划.docx",
-      "size": 4084,
+      "path": "../files/我的桌面收纳计划.docx",
+      "name": "我的桌面收纳计划.docx",
+      "size": 37659,
       "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "sha256": "4f74c23b6b5a8c978ba198716c4d592627dc272cfbfff0c218559a2851609dbe"
+      "sha256": "c5a507e56925fd2a6e8d318dd3f4b957e13cd7c5f4b3cbc934a6993374e35fa9"
     },
     {
-      "path": "../files/周末旅行.zip",
-      "name": "周末旅行.zip",
-      "size": 2200799,
+      "path": "../files/屏幕夹子入门资料.zip",
+      "name": "屏幕夹子入门资料.zip",
+      "size": 3663808,
       "mime": "application/zip",
-      "sha256": "2508626d25bb932d67370f8b78c0cb5af931871fc250df46597909a61aef5eb3"
+      "sha256": "d70d1ad154e6733dc57e170139fa613625a618ec801b204310c48153d6b8aa3a"
     },
     {
-      "path": "../files/LittleNote.swift",
-      "name": "LittleNote.swift",
-      "size": 156,
+      "path": "../files/QuickNote.swift",
+      "name": "QuickNote.swift",
+      "size": 1035,
       "mime": "text/plain",
-      "sha256": "2e3d958f43b7e8904c5f96acb365ec700f63f31738a6d0fe3bba36d2ef3a008b"
+      "sha256": "27beecfce73c94018ec8a59488fadadb9620cb85663fb0c132b998826da314c9"
     },
     {
-      "path": "../files/午后的录音.wav",
-      "name": "午后的录音.wav",
-      "size": 88244,
+      "path": "../files/夹取操作讲解.wav",
+      "name": "夹取操作讲解.wav",
+      "size": 1166488,
       "mime": "audio/wav",
-      "sha256": "3a86320ee841cfa5448b2c8fb42fcb5b996361dc2224aa893be30260066fc26c"
+      "sha256": "1ee8ad758fb669bf0033376cccf855f077adf65e91c5ff81ddfe7df27ca24db4"
     },
     {
       "path": "../files/屏幕夹子-实际操作演示.mov",
@@ -123,25 +148,25 @@
       "sha256": "6b2fcd457502af22bb492b48889ab6e1daacb526f2c3bf87df4b8e1661610562"
     },
     {
-      "path": "../files/旅行资料.zip",
-      "name": "旅行资料.zip",
-      "size": 2200799,
+      "path": "../files/屏幕夹子演示素材包.zip",
+      "name": "屏幕夹子演示素材包.zip",
+      "size": 3664303,
       "mime": "application/zip",
-      "sha256": "2508626d25bb932d67370f8b78c0cb5af931871fc250df46597909a61aef5eb3"
+      "sha256": "8acde4e4bd7307e25e8316bc1b0c6c6a0c67ae3c5da3b4e3fe107dee4a89361e"
     },
     {
-      "path": "../files/相机配置.dat",
-      "name": "相机配置.dat",
-      "size": 8,
-      "mime": "application/octet-stream",
-      "sha256": "6ed23419fa6b70c80afa6d026fed3f459a0bb3484c5a160102e2997aaa0bcf20"
+      "path": "../files/桌面整理示例.json",
+      "name": "桌面整理示例.json",
+      "size": 713,
+      "mime": "application/json",
+      "sha256": "5853513856f2d0ae2121b6f72d40cae6beff48d4a393258a796e36e7de41bafd"
     },
     {
       "path": "../files/field-notes.html",
       "name": "field-notes.html",
       "size": 29042,
       "mime": "text/html",
-      "sha256": "53b204fa3d64d6f92e7866233d21635d153609f1b32d91d83ad4a1ff400db15b",
+      "sha256": "b11f2c934b70f74b75bbdb37f72c59bbbe0d83aeb3b59098676d597462e50e49",
       "bytesPath": "../files/field-notes.html.bin"
     },
     {
@@ -154,39 +179,47 @@
   ],
   "folders": [
     {
-      "name": "周末旅行",
+      "name": "屏幕夹子入门资料",
       "children": [
         {
-          "name": "LittleNote.swift",
-          "path": "../files/周末旅行/LittleNote.swift"
+          "name": "QuickNote.swift",
+          "path": "../files/屏幕夹子入门资料/QuickNote.swift"
         },
         {
           "name": "云下牧场.jpg",
-          "path": "../files/周末旅行/云下牧场.jpg"
+          "path": "../files/屏幕夹子入门资料/云下牧场.jpg"
         },
         {
-          "name": "出行计划.docx",
-          "path": "../files/周末旅行/出行计划.docx"
+          "name": "夹取操作提示.txt",
+          "path": "../files/屏幕夹子入门资料/夹取操作提示.txt"
         },
         {
-          "name": "周末的小计划.txt",
-          "path": "../files/周末旅行/周末的小计划.txt"
+          "name": "夹取操作讲解.wav",
+          "path": "../files/屏幕夹子入门资料/夹取操作讲解.wav"
+        },
+        {
+          "name": "屏幕夹子快速上手.pdf",
+          "path": "../files/屏幕夹子入门资料/屏幕夹子快速上手.pdf"
         },
         {
           "name": "山间湖泊.png",
-          "path": "../files/周末旅行/山间湖泊.png"
+          "path": "../files/屏幕夹子入门资料/山间湖泊.png"
         },
         {
-          "name": "旅行手记.pdf",
-          "path": "../files/周末旅行/旅行手记.pdf"
+          "name": "我的桌面收纳计划.docx",
+          "path": "../files/屏幕夹子入门资料/我的桌面收纳计划.docx"
+        },
+        {
+          "name": "桌面整理示例.json",
+          "path": "../files/屏幕夹子入门资料/桌面整理示例.json"
         }
       ]
     }
   ],
   "previews": {
     "word": {
-      "path": "../files/出行计划.preview.html",
-      "sourceSHA256": "4f74c23b6b5a8c978ba198716c4d592627dc272cfbfff0c218559a2851609dbe"
+      "path": "../files/我的桌面收纳计划.preview.html",
+      "sourceSHA256": "c5a507e56925fd2a6e8d318dd3f4b957e13cd7c5f4b3cbc934a6993374e35fa9"
     }
   }
 }

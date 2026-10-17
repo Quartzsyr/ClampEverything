@@ -72,10 +72,10 @@ function codePage(text){
   const canvas=document.createElement('canvas');canvas.width=592;canvas.height=440;const c=canvas.getContext('2d');c.scale(2,2);c.font='10px ui-monospace, SFMono-Regular, Menlo, monospace';c.textBaseline='top';
   text.split('\n').slice(0,15).forEach((line,index)=>{c.fillStyle='#a5aaa0';c.fillText(String(index+1),8,12+index*14);c.fillStyle='#3b4841';c.save();c.beginPath();c.rect(30,0,254,220);c.clip();c.fillText(line.replace(/\t/g,'    '),31,12+index*14);c.restore();});return canvas.toDataURL('image/png');
 }
-export function editorToolbar(kind){return `<div class="editor-toolbar" data-editor-toolbar>${kind==='word'?'<select data-word-style aria-label="段落样式"><option value="18">正文</option><option value="28">标题</option><option value="24">小标题</option></select><button data-format="bold" aria-label="粗体"><b>B</b></button><button data-format="italic" aria-label="斜体"><i>I</i></button><button data-format="undo" aria-label="撤销">↶</button><button data-format="redo" aria-label="重做">↷</button>':'<span class="code-language">Swift</span>'}<span class="editor-save-state" role="status">${kind==='word'?'点击编辑以修改正文':'正在读取文件…'}</span>${kind==='word'?'<button data-toggle-word-edit>编辑</button>':''}<button data-save-editor aria-label="保存文件">保存 ⌘S</button><button data-editor-download data-download-file="${kind}" aria-label="下载编辑后的文件">下载 ↓</button></div>`;}
+export function editorToolbar(kind){return `<div class="editor-toolbar" data-editor-toolbar>${kind==='word'?'<select data-word-style aria-label="段落样式"><option value="18">正文</option><option value="28">标题</option><option value="24">小标题</option></select><button data-format="bold" aria-label="粗体"><b>B</b></button><button data-format="italic" aria-label="斜体"><i>I</i></button><button data-format="undo" aria-label="撤销">↶</button><button data-format="redo" aria-label="重做">↷</button>':'<span class="code-language">Swift</span>'}<span class="editor-save-state" role="status">${kind==='word'?'点击编辑以修改正文':'正在读取文件…'}</span>${kind==='word'?'<button data-toggle-word-edit disabled>编辑</button>':''}<button data-save-editor disabled aria-label="保存文件">保存 ⌘S</button><button data-editor-download data-download-file="${kind}" aria-label="下载编辑后的文件">下载 ↓</button></div>`;}
 export function codeMarkup(){return '<div class="code-line-numbers" aria-hidden="true"></div><pre class="code-colors" aria-hidden="true"></pre><textarea class="code-input" disabled aria-label="Swift 代码编辑器" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><div class="code-position" aria-live="off"></div>';}
 function coloredCode(text){return text.split(/(\/\/[^\n]*|"(?:[^"\\]|\\.)*"|\b(?:import|struct|let|var|func|return|if|else|true|false|nil|class|private|public|some|View|String|Int)\b)/g).map(token=>token.startsWith('//')?`<span class="syntax-comment">${esc(token)}</span>`:token.startsWith('"')?`<span class="syntax-string">${esc(token)}</span>`:/^(import|struct|let|var|func|return|if|else|true|false|nil|class|private|public|some|View|String|Int)$/.test(token)?`<span class="syntax-keyword">${token}</span>`:esc(token)).join('')+'\n';}
-export async function attachEditor(record,{item,files,onSaved,onStatus}){
+export async function attachEditor(record,{item,files,onSaved,onStatus,onFeedback=()=>{}}){
   const kind=item.kind,el=record.el,label=el.querySelector('.editor-save-state'),controller=new AbortController(),options={signal:controller.signal};
   let current=item,version=0,saved=0,pending=null,timer,root,doc,model,editing=kind==='code',disposed=false,savedSelection=null;
   const file=(await files.ensure(item)).file;
@@ -102,7 +102,7 @@ export async function attachEditor(record,{item,files,onSaved,onStatus}){
   if(disposed||!el.isConnected)return;
   label.textContent='已保存在此桌面';
   function dirty(){if(disposed)return;version++;label.textContent='正在保存…';clearTimeout(timer);timer=setTimeout(()=>flush().catch(fail),350);}
-  function fail(error){label.textContent='保存失败，可重试';onStatus('未能保存文件',error.message);}
+  function fail(error){label.textContent='保存失败，可重试';onFeedback('error');onStatus('未能保存文件',error.message,{kind:'error'});}
   async function flush(){
     clearTimeout(timer);if(pending){await pending;if(saved!==version)return flush();return current;}
     if(saved===version)return current;
@@ -118,7 +118,7 @@ export async function attachEditor(record,{item,files,onSaved,onStatus}){
   }
   root.addEventListener('input',dirty,options);
   root.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();flush().catch(fail);}},options);
-  const toolbar=el.querySelector('[data-editor-toolbar]');
+  const toolbar=el.querySelector('[data-editor-toolbar]');for(const button of toolbar.querySelectorAll('[data-toggle-word-edit],[data-save-editor]'))button.disabled=false;
   function rememberSelection(){const selection=doc.getSelection();if(selection?.rangeCount&&root.contains(selection.anchorNode)&&root.contains(selection.focusNode))savedSelection=selection.getRangeAt(0).cloneRange();}
   function restoreSelection(){root.focus();if(savedSelection&&root.contains(savedSelection.commonAncestorContainer)){const selection=doc.getSelection();selection.removeAllRanges();selection.addRange(savedSelection.cloneRange());}}
   function formatState(){if(kind==='word')rememberSelection();for(const button of toolbar.querySelectorAll('[data-format]')){button.disabled=!editing;if(['bold','italic'].includes(button.dataset.format))button.setAttribute('aria-pressed',String(editing&&doc.queryCommandState(button.dataset.format)));}if(kind==='word'){const paragraph=doc.getSelection()?.anchorNode?.parentElement?.closest('[data-word-size]');if(paragraph&&root.contains(paragraph)){const size=paragraph.dataset.wordSize,select=toolbar.querySelector('[data-word-style]');if(['18','24','28'].includes(size))select.value=size;}}}
@@ -132,8 +132,8 @@ export async function attachEditor(record,{item,files,onSaved,onStatus}){
   toolbar.addEventListener('click',async e=>{try{
     if(e.target.closest('[data-toggle-word-edit]')){editing=!editing;root.contentEditable=String(editing);e.target.closest('button').textContent=editing?'完成':'编辑';toolbar.querySelector('[data-word-style]').disabled=!editing;if(editing)root.focus();else await flush();formatState();}
     const format=e.target.closest('[data-format]');if(format&&editing){restoreSelection();doc.execCommand(format.dataset.format);rememberSelection();formatState();}
-    if(e.target.closest('[data-save-editor]')){await flush();onStatus('已保存',file.name);}
-    if(e.target.closest('[data-editor-download]'))await files.download(await flush());
+    if(e.target.closest('[data-save-editor]')){await flush();onFeedback('save');onStatus('已保存',file.name,{kind:'save'});}
+    if(e.target.closest('[data-editor-download]')){await files.download(await flush());onFeedback('download');onStatus('已开始下载',file.name,{kind:'download'});}
   }catch(error){fail(error);}},options);
   return {flush,dispose:()=>{disposed=true;clearTimeout(timer);controller.abort();},get item(){return current;},get dirty(){return saved!==version;}};
 }

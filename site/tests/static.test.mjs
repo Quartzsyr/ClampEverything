@@ -16,10 +16,10 @@ test('demo catalog identifies real files, folder entries and a Word preview deri
   if(entry.name.endsWith('.mov'))assert.match(bytes.subarray(0,16).toString(),/ftyp/);
   if(entry.name.endsWith('.wav')){assert.equal(bytes.subarray(0,4).toString(),'RIFF');assert.equal(bytes.subarray(8,12).toString(),'WAVE');}
  }
- const folder=catalog.folders[0];assert.equal(folder.children.length,6);
+ const folder=catalog.folders[0];assert.equal(folder.children.length,8);
  for(const child of folder.children){const bytes=await readFile(new URL(child.path,native));assert.equal(createHash('sha256').update(bytes).digest('hex'),catalog.files.find(f=>f.name===child.name).sha256);}
- const word=catalog.files.find(f=>f.name==='出行计划.docx');assert.equal(catalog.previews.word.sourceSHA256,word.sha256);
- assert.match(await readFile(new URL(catalog.previews.word.path,native),'utf8'),/目的地：海边的小镇/);
+ const word=catalog.files.find(f=>f.name==='我的桌面收纳计划.docx');assert.equal(catalog.previews.word.sourceSHA256,word.sha256);
+ assert.match(await readFile(new URL(catalog.previews.word.path,native),'utf8'),/我的工作场景：阅读与写作/);
 });
 test('all twelve types use existing native renderings and real source files',async()=>{
  const manifest=JSON.parse(await readFile(new URL('manifest.json',native),'utf8'));
@@ -47,10 +47,10 @@ test('usage screenshots are actual recorded interactions and PDF text comes from
  assert.match(provenance.method,/real Option/);assert.equal(provenance.files.length,3);
  for(const name of provenance.files){assert.ok((await stat(new URL('assets/usage/'+name,root))).size>1000);assert.ok(page.includes('../usage/'+name));}
  assert.match(page,/id="usage-title"/);assert.match(page,/loading="lazy"/);
- const text=JSON.parse(await readFile(new URL('assets/files/旅行手记.text.json',root),'utf8'));
- const pdf=await readFile(new URL('assets/files/旅行手记.pdf',root));
+ const text=JSON.parse(await readFile(new URL('assets/files/屏幕夹子快速上手.text.json',root),'utf8'));
+ const pdf=await readFile(new URL('assets/files/屏幕夹子快速上手.pdf',root));
  assert.equal(text.sourceSHA256,createHash('sha256').update(pdf).digest('hex'));
- assert.equal(text.pages.length,3);assert.equal(text.pages[0][0].text,'旅行手记');
+ assert.equal(text.pages.length,3);assert.equal(text.pages[0][0].text,'CLAMP EVERYTHING / QUICK START');
  for(const line of text.pages.flat()){assert.ok(line.text.trim());assert.ok(line.x>=0&&line.y>=0&&line.width>0&&line.height>0&&line.x+line.width<=1.001&&line.y+line.height<=1.001);}
 });
 

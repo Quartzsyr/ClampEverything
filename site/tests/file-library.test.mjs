@@ -14,7 +14,7 @@ test('drag export contains the original File bytes and resolves only verified fi
   const item=manifest.items.find(item=>item.kind==='word'),data=new Map(),dragFiles=[];
   const transfer={items:{add:file=>dragFiles.push(file)},setData:(type,value)=>data.set(type,value),getData:type=>data.get(type)};
   library.writeDrag(transfer,item);
-  assert.equal(dragFiles.length,1);assert.ok(dragFiles[0] instanceof File);assert.equal(dragFiles[0].name,'出行计划.docx');
+  assert.equal(dragFiles.length,1);assert.ok(dragFiles[0] instanceof File);assert.equal(dragFiles[0].name,'我的桌面收纳计划.docx');
   assert.deepEqual(new Uint8Array(await dragFiles[0].arrayBuffer()),new Uint8Array(await readFile(new URL(item.file,native))));
   assert.equal(library.resolveDrag(transfer,manifest.items),item);
   data.set('application/x-clamp-file',JSON.stringify({kind:'word',id:'unrelated-file'}));assert.equal(library.resolveDrag(transfer,manifest.items),undefined);

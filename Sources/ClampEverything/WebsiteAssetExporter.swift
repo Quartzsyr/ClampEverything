@@ -52,14 +52,19 @@ import ClampCore
         let manager = WindowManager(store: store)
         defer { manager.shutdown(); try? fm.removeItem(at: temporary) }
         let examples = GuideExamples()
-        let fixtures = try await makeFiles(at: files, examples: examples)
+        let fixtures: [String: URL]
+        if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_EXISTING_FILES"] == "1" {
+            fixtures = try existingFiles(at: files, output: output)
+        } else {
+            fixtures = try await makeFiles(at: files, examples: examples)
+        }
         var ids: [(String, UUID, String)] = []
         for kind in ["photo", "document", "word", "folder", "code", "audio", "video", "archive", "file"] {
             guard let file = fixtures[kind] else { continue }
             store.importFiles([file])
             if let item = store.active.last { ids.append((kind, item.id, file.lastPathComponent)) }
         }
-        store.addTextOrLink(GuideExamples.note)
+        store.addTextOrLink(try String(contentsOf: fixtures["note"]!, encoding: .utf8))
         let note = store.active.last!
         ids.insert(("note", note.id, fixtures["note"]!.lastPathComponent), at: 1)
         // Serve the exact saved HTML through WebKit's regular live webpage path.
@@ -75,7 +80,7 @@ import ClampCore
         store.update(webID) { $0.title = "屏幕夹子 · 下载 Mac 版" }
         ids.append(("web", webID, fixtures["web"]!.lastPathComponent))
         // The native material group uses real members, without changing their standalone fixtures.
-        var group = ClipGroup(title: "这次旅行的材料")
+        var group = ClipGroup(title: "我的入门资料")
         group.id = UUID(uuidString: "C1A00000-0000-4000-8000-000000000012")!
         store.state.groups.append(group)
         for kind in ["photo", "document", "note"] {
@@ -157,7 +162,7 @@ import ClampCore
                 }
                 store.documentPageIndices[id] = 0
             }
-            entries.append(Entry(kind: kind, title: title, file: "../files/" + (kind == "folder" ? "周末旅行.zip" : filename), source: "\(kind)-source.png",
+            entries.append(Entry(kind: kind, title: title, file: "../files/" + (kind == "folder" ? fixtures["folder"]!.lastPathComponent + ".zip" : filename), source: "\(kind)-source.png",
                 width: size.width, height: size.height, left: "\(kind)-left.png", right: "\(kind)-right.png",
                 compactLeft: "\(kind)-compact-left.png", compactRight: "\(kind)-compact-right.png",
                 pinLeft: [44, 26], pinRight: [size.width - 44, 26], pages: pageFiles))
@@ -185,6 +190,17 @@ import ClampCore
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try encoder.encode(Manifest(padding: padding, pngPixelScale: NSScreen.main?.backingScaleFactor ?? 2, items: entries)).write(to: output.appendingPathComponent("manifest.json"), options: .atomic)
         try await exportWebOnly(to: output)
+    }
+    private static func existingFiles(at files: URL, output: URL) throws -> [String: URL] {
+        let data = try Data(contentsOf: output.appendingPathComponent("manifest.json"))
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let entries = json["items"] as? [[String: Any]] else { throw LibraryError.unsafeAsset }
+        var result: [String: URL] = [:]
+        for entry in entries {
+            guard let kind = entry["kind"] as? String, let file = entry["file"] as? String else { continue }
+            result[kind] = kind == "folder" ? files.appendingPathComponent(json["folderName"] as? String ?? "周末旅行") : output.appendingPathComponent(file).standardizedFileURL
+        }
+        return result
     }
     private static func exportMedia(to output: URL) async throws {
         let files = output.deletingLastPathComponent().appendingPathComponent("files", isDirectory: true)

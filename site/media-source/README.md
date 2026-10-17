@@ -8,18 +8,19 @@
 
 字幕源文件保存在 `promotional/`：`captions.json`、`captions.ass`，以及可独立使用的 SRT/VTT。制作脚本为 `../scripts/prepare-promotional.py`，通过 `--video`、`--photo`、`--secondary-photo` 接收用户原件路径；需要 Pillow、imageio-ffmpeg。
 
-桌面默认播放器、聊天视频附件和下载网页中的宣传播放器共用这个实际视频。聊天请求照片时轮流发送两张实拍照片；周末旅行文件夹和 ZIP 包含两张照片。夹取后的照片、视频、文件夹和材料组预览由现有原生 `CardSurface` 重新离屏导出，新增照片仍使用真实的夹子、纸面和收起样式。
+桌面默认播放器、聊天视频附件和下载网页中的宣传播放器共用这个实际视频。聊天请求照片时轮流发送两张实拍照片；屏幕夹子入门资料文件夹和 ZIP 包含两张照片。夹取后的照片、视频、文件夹和材料组预览由现有原生 `CardSurface` 重新离屏导出，新增照片仍使用真实的夹子、纸面和收起样式。
 
 重建新媒体的原生预览（保留剪辑后的视频）：
 
 ```sh
 swift build
-CLAMP_WEBSITE_MEDIA_ONLY=1 CLAMP_WEBSITE_PRESERVE_VIDEO=1 .build/debug/ClampEverything --export-website "$PWD/site/assets/native"
+CLAMP_WEBSITE_EXISTING_FILES=1 .build/debug/ClampEverything --export-website "$PWD/site/assets/native"
+python3 site/scripts/finalize-onboarding.py
 node site/scripts/prepare-native-media.cjs
 python3 site/scripts/prepare-files.py
 ```
 
-随后将文件夹重新打包至 `周末旅行.zip` 与 `旅行资料.zip`，再运行 `prepare-files.py` 更新大小和摘要。新增实际媒体使网站静态资源预算由 20 MB 调整至 50 MB，视频播放器使用按需加载。
+入门文件夹和素材包由 `prepare-onboarding.py` 打包，再运行 `prepare-files.py` 更新大小和摘要。新增实际媒体使网站静态资源预算由 20 MB 调整至 50 MB，视频播放器使用按需加载。
 
 以下保留前一版生成素材的历史记录，当前网页已使用上述用户实拍照片与实际操作视频。
 

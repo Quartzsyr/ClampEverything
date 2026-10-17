@@ -24,7 +24,7 @@
       "compactLeft": "photo-compact-left.webp",
       "compactRight": "photo-compact-right.webp",
       "file": "../files/山间湖泊.png",
-      "height": 238,
+      "height": 250.432,
       "kind": "photo",
       "left": "photo-left.webp",
       "pinLeft": [
@@ -45,8 +45,8 @@
     {
       "compactLeft": "note-compact-left.png",
       "compactRight": "note-compact-right.png",
-      "file": "../files/周末的小计划.txt",
-      "height": 224,
+      "file": "../files/夹取操作提示.txt",
+      "height": 312,
       "kind": "note",
       "left": "note-left.png",
       "pinLeft": [
@@ -59,13 +59,13 @@
       ],
       "right": "note-right.png",
       "source": "note-source.png",
-      "title": "周末的小计划",
+      "title": "随手夹取的小提示",
       "width": 284
     },
     {
       "compactLeft": "document-compact-left.png",
       "compactRight": "document-compact-right.png",
-      "file": "../files/旅行手记.pdf",
+      "file": "../files/屏幕夹子快速上手.pdf",
       "height": 309,
       "kind": "document",
       "left": "document-left.png",
@@ -94,18 +94,18 @@
         26
       ],
       "pinRight": [
-        172,
+        161,
         26
       ],
       "right": "document-right.png",
       "source": "document-source.png",
-      "title": "旅行手记.pdf",
-      "width": 216
+      "title": "屏幕夹子快速上手.pdf",
+      "width": 205
     },
     {
       "compactLeft": "word-compact-left.png",
       "compactRight": "word-compact-right.png",
-      "file": "../files/出行计划.docx",
+      "file": "../files/我的桌面收纳计划.docx",
       "height": 309,
       "kind": "word",
       "left": "word-left.png",
@@ -139,13 +139,13 @@
       ],
       "right": "word-right.png",
       "source": "word-source.png",
-      "title": "出行计划.docx",
+      "title": "我的桌面收纳计划.docx",
       "width": 216
     },
     {
       "compactLeft": "folder-compact-left.png",
       "compactRight": "folder-compact-right.png",
-      "file": "../files/周末旅行.zip",
+      "file": "../files/屏幕夹子入门资料.zip",
       "height": 420,
       "kind": "folder",
       "left": "folder-left.png",
@@ -159,13 +159,13 @@
       ],
       "right": "folder-right.png",
       "source": "folder-source.png",
-      "title": "周末旅行",
+      "title": "屏幕夹子入门资料",
       "width": 320
     },
     {
       "compactLeft": "code-compact-left.png",
       "compactRight": "code-compact-right.png",
-      "file": "../files/LittleNote.swift",
+      "file": "../files/QuickNote.swift",
       "height": 273,
       "kind": "code",
       "left": "code-left.png",
@@ -179,13 +179,13 @@
       ],
       "right": "code-right.png",
       "source": "code-source.png",
-      "title": "LittleNote.swift",
+      "title": "QuickNote.swift",
       "width": 320
     },
     {
       "compactLeft": "audio-compact-left.png",
       "compactRight": "audio-compact-right.png",
-      "file": "../files/午后的录音.wav",
+      "file": "../files/夹取操作讲解.wav",
       "height": 229,
       "kind": "audio",
       "left": "audio-left.png",
@@ -199,8 +199,9 @@
       ],
       "right": "audio-right.png",
       "source": "audio-source.png",
-      "title": "午后的录音.wav",
-      "width": 304
+      "title": "夹取操作讲解.wav",
+      "width": 304,
+      "duration": 26.44920634920635
     },
     {
       "compactLeft": "video-compact-left.webp",
@@ -228,7 +229,7 @@
     {
       "compactLeft": "archive-compact-left.png",
       "compactRight": "archive-compact-right.png",
-      "file": "../files/旅行资料.zip",
+      "file": "../files/屏幕夹子演示素材包.zip",
       "height": 203,
       "kind": "archive",
       "left": "archive-left.png",
@@ -242,14 +243,14 @@
       ],
       "right": "archive-right.png",
       "source": "archive-source.png",
-      "title": "旅行资料.zip",
+      "title": "屏幕夹子演示素材包.zip",
       "width": 264
     },
     {
       "compactLeft": "file-compact-left.png",
       "compactRight": "file-compact-right.png",
-      "file": "../files/相机配置.dat",
-      "height": 233,
+      "file": "../files/桌面整理示例.json",
+      "height": 273,
       "kind": "file",
       "left": "file-left.png",
       "pinLeft": [
@@ -257,13 +258,13 @@
         26
       ],
       "pinRight": [
-        220,
+        276,
         26
       ],
       "right": "file-right.png",
       "source": "file-source.png",
-      "title": "相机配置.dat",
-      "width": 264
+      "title": "桌面整理示例.json",
+      "width": 320
     },
     {
       "compactLeft": "web-compact-left.png",
@@ -288,7 +289,7 @@
     {
       "compactLeft": "group-compact-left.webp",
       "compactRight": "group-compact-right.webp",
-      "file": "../files/旅行资料.zip",
+      "file": "../files/屏幕夹子演示素材包.zip",
       "height": 420,
       "kind": "group",
       "left": "group-left.webp",
@@ -302,13 +303,15 @@
       ],
       "right": "group-right.webp",
       "source": "group-source.webp",
-      "title": "这次旅行的材料",
+      "title": "我的入门资料",
       "width": 320
     }
   ],
   "padding": 32,
   "pngPixelScale": 2,
   "renderer": "CardSurface / ItemBody / DocumentPages / ImageGenCursorClip",
+  "folderName": "屏幕夹子入门资料",
+  "contentVersion": "onboarding-20261017",
   "extraItems": [
     {
       "compactLeft": "photo-meadow-compact-left.webp",
