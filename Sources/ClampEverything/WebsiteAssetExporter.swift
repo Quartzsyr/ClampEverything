@@ -190,7 +190,9 @@ import ClampCore
         let files = output.deletingLastPathComponent().appendingPathComponent("files", isDirectory: true)
         let frame = output.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("media-source/lake-film.jpg")
         guard let image = NSImage(contentsOf: frame) else { throw LibraryError.unsafeAsset }
-        try await makeVideo(image: image, to: files.appendingPathComponent("湖边的风.mov"), moving: true)
+        if ProcessInfo.processInfo.environment["CLAMP_WEBSITE_PRESERVE_VIDEO"] != "1" {
+            try await makeVideo(image: image, to: files.appendingPathComponent("湖边的风.mov"), moving: true)
+        }
         let folder = files.appendingPathComponent("周末旅行", isDirectory: true)
         let photoCopy = folder.appendingPathComponent("山间湖泊.png")
         try? FileManager.default.removeItem(at: photoCopy)
@@ -201,7 +203,9 @@ import ClampCore
         let manager = WindowManager(store: store)
         defer { manager.shutdown(); try? FileManager.default.removeItem(at: temporary) }
         var ids: [String: UUID] = [:]
-        for (kind, name) in [("photo", "山间湖泊.png"), ("video", "湖边的风.mov"), ("folder", "周末旅行"), ("document", "旅行手记.pdf")] {
+        let movieName = ProcessInfo.processInfo.environment["CLAMP_WEBSITE_PRESERVE_VIDEO"] == "1" ? "屏幕夹子-实际操作演示.mov" : "湖边的风.mov"
+        for (kind, name) in [("photo", "山间湖泊.png"), ("photo-meadow", "云下牧场.jpg"), ("video", movieName), ("folder", "周末旅行"), ("document", "旅行手记.pdf")] {
+            guard FileManager.default.fileExists(atPath: files.appendingPathComponent(name).path) else { continue }
             store.importFiles([files.appendingPathComponent(name)])
             ids[kind] = store.active.last!.id
         }
@@ -214,8 +218,9 @@ import ClampCore
         }
         for item in store.active { store.loadThumbnail(item) }
         try await Task.sleep(nanoseconds: 800_000_000)
-        let sizes = ["photo": CGSize(width: 320, height: 238), "video": CGSize(width: 312, height: 221), "folder": CGSize(width: 320, height: 420), "group": CGSize(width: 320, height: 420)]
-        for kind in ["photo", "video", "folder", "group"] {
+        let sizes = ["photo": CGSize(width: 320, height: 238), "photo-meadow": CGSize(width: 320, height: 238), "video": CGSize(width: 312, height: 221), "folder": CGSize(width: 320, height: 420), "group": CGSize(width: 320, height: 420)]
+        for kind in ["photo", "photo-meadow", "video", "folder", "group"] {
+            guard ids[kind] != nil else { continue }
             let id = ids[kind]!, size = sizes[kind]!, model = CardModel(id: ids[kind]!, manager: manager)
             model.expanded = true; model.revealProgress = 1; model.sheetSize = size; model.sticky = true
             for side in [ClipSide.left, .right] {

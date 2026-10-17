@@ -1,9 +1,9 @@
 {
   "application": "ClampEverything",
   "nativeVersion": "1.7.16",
-  "exportedOn": "2026-10-16",
+  "exportedOn": "2026-10-17",
   "method": "Offscreen NSHostingView, real CardSurface, real fixture files, Retina 2x",
-  "personalFilesUsed": false,
+  "personalFilesUsed": true,
   "sourceSHA256": {
     "CardViews.swift": "d64cf9b61710bbb7463761dce47c61466e1eec1cb9fe175b74e7fb122d81d263",
     "MinimalPinnedContent.swift": "1b2fbc44db4b0bd97a8703bc711d1a4ff80678da5dea7c584110d1503c65c405",
@@ -14,11 +14,11 @@
     "CompactClipView.swift": "e56ea529967589d1d46997b421393beca1a81ee8ebf49d4958f13f30dd877303",
     "HangingMetalClip.swift": "e9fb108df1420ae10d7c55dc1d4e349cfe5e00c52f8425f34624eae9305e4472",
     "CursorPickupMotion.swift": "2b434f12020b558a8905f43e53cc0d8ed0aa88418277e650a572f36f2a70de4c",
-    "WebsiteAssetExporter.swift": "682e95e002ee59afe7a256404b300c7eb36564420cca0b6168ecfebf071067a8"
+    "WebsiteAssetExporter.swift": "596ef57ee7d1bc2026171c3a2ca829a45f16469e9517734e22c3c9e0fcc08f7c"
   },
   "webFixture": {
     "file": "../files/field-notes.html",
-    "sha256": "44ee65c30fad44d19f2342d89401f604b5e095490e9aee83966654dd1ae584e9",
+    "sha256": "53b204fa3d64d6f92e7866233d21635d153609f1b32d91d83ad4a1ff400db15b",
     "method": "WebKit.takeSnapshot and CardSurface; product download page"
   },
   "editableNoteStock": {
@@ -28,15 +28,6 @@
     ],
     "method": "CardSurface offscreen export with empty text, same 284×224 geometry; WebP quality 95. Browser overlays edited TXT using the native 14pt font, 18pt inset and 5pt line spacing."
   },
-  "generatedMedia": {
-    "tool": "built-in image_gen",
-    "photo": "../files/山间湖泊.png",
-    "movie": "../files/湖边的风.mov",
-    "movieSource": "../../media-source/lake-film.jpg",
-    "movieEncoding": "AVAssetWriter H.264, 960×540, 24 fps, 6 s, slow camera push-in from imagegen photographic still",
-    "nativePreviews": "CardSurface / PhotoBody / MinimalMediaObject, scoped media export; WebP quality 95",
-    "prompts": "../../media-source/README.md"
-  },
   "editorStock": {
     "files": [
       "code-blank-left.webp",
@@ -45,5 +36,16 @@
       "word-blank-right.webp"
     ],
     "method": "Shipping CardSurface, empty Swift/DOCX fixtures, unchanged clip and paper finish; browser displays pages rendered from the edited file model"
+  },
+  "personalFilesScope": "Only the two landscape photos and the application recording explicitly provided for this website by the user; no unrelated Downloads documents.",
+  "providedMedia": {
+    "photos": [
+      "../files/山间湖泊.png",
+      "../files/云下牧场.jpg"
+    ],
+    "movie": "../files/屏幕夹子-实际操作演示.mov",
+    "movieEncoding": "H.264, 1280×848, 30 fps, 109 s; original 1280×720 recording intact above a timed Chinese subtitle band; original audio transcoded to AAC",
+    "nativePreviews": "CardSurface / PhotoBody / MinimalMediaObject offscreen scoped export; WebP quality 95",
+    "documentation": "../../media-source/README.md"
   }
 }

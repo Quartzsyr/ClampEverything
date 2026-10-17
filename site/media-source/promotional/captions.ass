@@ -1,0 +1,40 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1280
+PlayResY: 848
+ScaledBorderAndShadow: yes
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Title,Hiragino Sans GB,30,&H00F0F3ED,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,5,20,20,0,1
+Style: Detail,Hiragino Sans GB,18,&H00B5C5B1,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,5,20,20,0,1
+Style: Brand,Hiragino Sans GB,23,&H00F0F3ED,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,4,20,20,0,1
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:01:49.00,Brand,,0,0,0,,{\pos(32,771)}屏幕夹子
+Dialogue: 0,0:00:00.00,0:01:49.00,Detail,,0,0,0,,{\an4\pos(32,803)\fs12\fsp1.6}CLAMP EVERYTHING
+Dialogue: 1,0:00:00.00,0:00:05.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}把灵感，夹在手边。
+Dialogue: 1,0:00:00.00,0:00:05.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}屏幕夹子 · macOS 原生实际操作演示
+Dialogue: 1,0:00:05.00,0:00:12.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}按住 Option，鼠标变成夹子
+Dialogue: 1,0:00:05.00,0:00:12.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}瞄准内容，夹住后随手放在屏幕边缘
+Dialogue: 1,0:00:12.00,0:00:20.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}想用时，轻轻展开
+Dialogue: 1,0:00:12.00,0:00:20.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}文字与视频，都有各自的真实形态
+Dialogue: 1,0:00:20.00,0:00:28.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}文稿留在眼前
+Dialogue: 1,0:00:20.00,0:00:28.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}夹住 Word 和代码，边看边用
+Dialogue: 1,0:00:28.00,0:00:38.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}PDF，也能随手翻阅
+Dialogue: 1,0:00:28.00,0:00:38.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}展开文稿，按页查看需要的内容
+Dialogue: 1,0:00:38.00,0:00:46.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}零散材料，逐一收好
+Dialogue: 1,0:00:38.00,0:00:46.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}压缩包、普通文件与便笺，保持各自的样子
+Dialogue: 1,0:00:46.00,0:00:56.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}链接和文件夹，一起夹住
+Dialogue: 1,0:00:46.00,0:00:56.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}把相关资料留在手边，继续眼前的工作
+Dialogue: 1,0:00:56.00,0:01:05.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}照片，保留原来的模样
+Dialogue: 1,0:00:56.00,0:01:05.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}从桌面夹起，在需要的位置展开
+Dialogue: 1,0:01:05.00,0:01:16.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}展开阅读，收起让出空间
+Dialogue: 1,0:01:05.00,0:01:16.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}随内容保留预览与原文件
+Dialogue: 1,0:01:16.00,0:01:26.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}每种内容，都有自己的触感
+Dialogue: 1,0:01:16.00,0:01:26.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}文稿、文件与收纳袋，自然地夹取和放置
+Dialogue: 1,0:01:26.00,0:01:36.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}跨窗口，也能留在手边
+Dialogue: 1,0:01:26.00,0:01:36.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}切换到浏览器，夹住的资料依然可见
+Dialogue: 1,0:01:36.00,0:01:44.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}从桌面，到网页里的桌面
+Dialogue: 1,0:01:36.00,0:01:44.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}在官网亲手试试，再把夹子带回 Mac
+Dialogue: 1,0:01:44.00,0:01:49.00,Title,,0,0,0,,{\pos(760,765)\fad(220,180)}把灵感，夹在手边。
+Dialogue: 1,0:01:44.00,0:01:49.00,Detail,,0,0,0,,{\pos(760,809)\fad(220,180)}clamp.musefilm.top  ·  下载 Mac 版

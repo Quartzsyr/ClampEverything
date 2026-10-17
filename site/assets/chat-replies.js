@@ -1,7 +1,7 @@
 // A local scene conversation. No network request or real messaging account.
 const rules=[
-  {key:'photo',test:/图片|照片|风景|相片|photo|image/i,kind:'photo',texts:['这张是清晨的湖边，光刚好落在水面上。','照片发你了，留意远山和湖面的倒影。','换个角度看这片湖，颜色很安静。']},
-  {key:'video',test:/视频|影片|电影|录像|video|movie/i,kind:'video',texts:['还拍了一小段湖边的光，打开就能播放。','这段短片发你，慢慢看。','湖边的片段在这里，可以随手夹在旁边。']},
+  {key:'photo',test:/图片|照片|风景|相片|photo|image/i,kind:'photo',texts:['这张是云下的牧场，羊群就在草地上。','照片发你了，留意远山和湖面的倒影。']},
+  {key:'video',test:/视频|影片|电影|录像|video|movie/i,kind:'video',texts:['把屏幕夹子的实际操作演示发你，打开就能播放。','这段短片发你，慢慢看。','这段宣传视频在这里，可以随手夹在旁边。']},
   {key:'pdf',test:/pdf|手记/i,kind:'document',texts:['旅行手记整理成 PDF 了，发你看看。','这份 PDF 里有沿途的记录。','文稿在这里，翻页看看后面的内容。']},
   {key:'word',test:/docx|word|计划|行程|安排|文档/i,kind:'word',texts:['把出行计划发你，时间和目的地都可以直接改。','这是可编辑的 Word 版本，一起完善行程吧。','文档在这里，改好后也能夹起来留在手边。']},
   {key:'code',test:/代码|swift|编程|code/i,kind:'code',texts:['小便笺的 Swift 代码在这里，可以打开编辑。','把这段代码发你，试着改改标题。','源码给你了，修改后可以保存成真实文件。']},

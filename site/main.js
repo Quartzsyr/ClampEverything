@@ -1,6 +1,6 @@
 import { createWallpapers, WALLPAPERS } from './assets/wallpapers.js';
 import { bindSystemMenu } from './assets/system-menu.js';
-import { createDesktop } from './desktop.js?v=20261016-controls';
+import { createDesktop } from './desktop.js?v=20261017-real-media';
 import { HINGE, MATERIALS, clamp, pickupSample } from './motion.js';
 import { FileLibrary } from './file-library.js?v=20261016-dock';
 import { HoldGesture } from './hold-gesture.js';
@@ -9,7 +9,7 @@ const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const nativeBase = new URL('./assets/native/', import.meta.url);
-const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261016-text');return url.href;};
+const nativeURL = path => {const url=new URL(path,nativeBase);if(['http:','https:'].includes(url.protocol))url.searchParams.set('v','20261017-real-media');return url.href;};
 const dialog = $('#info-dialog');
 const objects = new Map();
 const gesture = new HoldGesture();
@@ -226,7 +226,7 @@ function finishManual(){
   obj.el.style.zIndex=++z;current.source.element.classList.remove('aiming','being-clamped');manual=null;gesture.cancel();syncCapture();cursor.classList.remove('holding');status('已夹住',current.item.title);
 }
 async function init(){
-  document.body.classList.add('load-pending');const response=await fetch(new URL('manifest.json',nativeBase));if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();await files.load(manifest.items);
+  document.body.classList.add('load-pending');const response=await fetch(nativeURL('manifest.json'),{cache:'no-store'});if(!response.ok)throw new Error('原生素材尚未就绪');manifest=await response.json();await files.load([...manifest.items,...(manifest.extraItems||[])]);
   environment=createDesktop({manifest,nativeURL,files,animated,canCapture:()=>gesture.active,onCapture:beginCapture,onStatus:status,onSettings:showSettings,onAbout:showAbout,isCapturing:()=>!!manual,onCancel:stopDemo,onCopy:copyItem,onRestorePinned:entry=>makeObject(entry.item,entry)});
   bind();await environment.mount();document.body.classList.remove('load-pending');if(files.failures.size)status('桌面已就绪',`${files.failures.size} 个文件暂时不可用，其他内容可继续使用；再次夹取会重试`);else status('按住 ⌥ Option，随手夹取','普通鼠标单击选择、双击打开；按住 Option 夹取，松开鼠标放置');
 }

@@ -13,9 +13,9 @@ import xml.etree.ElementTree as ET
 root = Path(__file__).resolve().parents[1]
 files = root / 'assets/files'
 manifest = json.loads((root / 'assets/native/manifest.json').read_text())
-types = {'.png':'image/png', '.pdf':'application/pdf', '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.txt':'text/plain', '.swift':'text/plain', '.html':'text/html', '.wav':'audio/wav', '.mov':'video/quicktime', '.zip':'application/zip', '.dat':'application/octet-stream'}
+types = {'.jpg':'image/jpeg', '.png':'image/png', '.pdf':'application/pdf', '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.txt':'text/plain', '.swift':'text/plain', '.html':'text/html', '.wav':'audio/wav', '.mov':'video/quicktime', '.zip':'application/zip', '.dat':'application/octet-stream'}
 entries = []
-for name in dict.fromkeys(item['file'] for item in manifest['items']):
+for name in dict.fromkeys(item['file'] for item in [*manifest['items'], *manifest.get('extraItems', [])]):
     path = (root / 'assets/native' / name).resolve()
     data = path.read_bytes()
     entry = dict(path=name, name=path.name, size=len(data), mime=types[path.suffix], sha256=hashlib.sha256(data).hexdigest())

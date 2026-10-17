@@ -2,9 +2,9 @@
 // when sharp is provided by a bundled runtime rather than a local installation.
 const fs=require('node:fs/promises'),path=require('node:path'),sharp=require(process.env.SHARP_MODULE||'sharp');
 (async()=>{const root=path.join(__dirname,'../assets/native'),manifest=JSON.parse(await fs.readFile(path.join(root,'manifest.json')));
-for(const item of manifest.items.filter(i=>['photo','video','group'].includes(i.kind))){for(const field of ['left','right','compactLeft','compactRight','source']){
- const suffix=field==='compactLeft'?'compact-left':field==='compactRight'?'compact-right':field,old=`${item.kind}-${suffix}.png`,input=path.join(root,old);
- if(item.kind==='photo'&&field==='source'){item[field]='../files/山间湖泊.png';continue;}
+for(const item of [...manifest.items,...(manifest.extraItems||[])].filter(i=>['photo','video','group'].includes(i.kind))){for(const field of ['left','right','compactLeft','compactRight','source']){
+ const suffix=field==='compactLeft'?'compact-left':field==='compactRight'?'compact-right':field,old=`${item.file.endsWith('云下牧场.jpg')?'photo-meadow':item.kind}-${suffix}.png`,input=path.join(root,old);
+ if(item.kind==='photo'&&field==='source'){item[field]=item.file;continue;}
  try{await fs.access(input);}catch{continue;}
  const next=old.replace(/\.png$/,'.webp');await sharp(input).webp({quality:95}).toFile(path.join(root,next));item[field]=next; // Keep legacy PNG URLs usable in already-open browser tabs.
 }}

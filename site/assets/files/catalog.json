@@ -2,13 +2,13 @@
   "archives": {
     "../files/周末旅行.zip": [
       {
-        "name": "周末旅行/",
-        "size": 0,
-        "directory": true
-      },
-      {
         "name": "周末旅行/LittleNote.swift",
         "size": 156,
+        "directory": false
+      },
+      {
+        "name": "周末旅行/云下牧场.jpg",
+        "size": 405789,
         "directory": false
       },
       {
@@ -23,29 +23,24 @@
       },
       {
         "name": "周末旅行/山间湖泊.png",
-        "size": 987327,
+        "size": 1675763,
         "directory": false
       },
       {
         "name": "周末旅行/旅行手记.pdf",
         "size": 184051,
         "directory": false
-      },
-      {
-        "name": "周末旅行/路线与参考/",
-        "size": 0,
-        "directory": true
       }
     ],
     "../files/旅行资料.zip": [
       {
-        "name": "周末旅行/",
-        "size": 0,
-        "directory": true
-      },
-      {
         "name": "周末旅行/LittleNote.swift",
         "size": 156,
+        "directory": false
+      },
+      {
+        "name": "周末旅行/云下牧场.jpg",
+        "size": 405789,
         "directory": false
       },
       {
@@ -60,18 +55,13 @@
       },
       {
         "name": "周末旅行/山间湖泊.png",
-        "size": 987327,
+        "size": 1675763,
         "directory": false
       },
       {
         "name": "周末旅行/旅行手记.pdf",
         "size": 184051,
         "directory": false
-      },
-      {
-        "name": "周末旅行/路线与参考/",
-        "size": 0,
-        "directory": true
       }
     ]
   },
@@ -79,9 +69,9 @@
     {
       "path": "../files/山间湖泊.png",
       "name": "山间湖泊.png",
-      "size": 987327,
+      "size": 1675763,
       "mime": "image/png",
-      "sha256": "da0a84d1144ca8792e39ab11a0cf95abe2704d686b3dfa8612cfe6826787f356"
+      "sha256": "cf11549bf3250dea5b967b6ad1460b5a006b274762f7f7abf2ce8c8002a6e374"
     },
     {
       "path": "../files/周末的小计划.txt",
@@ -107,9 +97,9 @@
     {
       "path": "../files/周末旅行.zip",
       "name": "周末旅行.zip",
-      "size": 1108525,
+      "size": 2200799,
       "mime": "application/zip",
-      "sha256": "17cb7793ca2115c64c2efce5fafdb4aec8b3251f835b897513db29c08b37a03f"
+      "sha256": "2508626d25bb932d67370f8b78c0cb5af931871fc250df46597909a61aef5eb3"
     },
     {
       "path": "../files/LittleNote.swift",
@@ -126,18 +116,18 @@
       "sha256": "3a86320ee841cfa5448b2c8fb42fcb5b996361dc2224aa893be30260066fc26c"
     },
     {
-      "path": "../files/湖边的风.mov",
-      "name": "湖边的风.mov",
-      "size": 725735,
+      "path": "../files/屏幕夹子-实际操作演示.mov",
+      "name": "屏幕夹子-实际操作演示.mov",
+      "size": 13077541,
       "mime": "video/quicktime",
-      "sha256": "511034aa094c7eb8a1ac7604ac3ce251a508341822575268f1e3edcb64ad1b08"
+      "sha256": "6b2fcd457502af22bb492b48889ab6e1daacb526f2c3bf87df4b8e1661610562"
     },
     {
       "path": "../files/旅行资料.zip",
       "name": "旅行资料.zip",
-      "size": 1108525,
+      "size": 2200799,
       "mime": "application/zip",
-      "sha256": "17cb7793ca2115c64c2efce5fafdb4aec8b3251f835b897513db29c08b37a03f"
+      "sha256": "2508626d25bb932d67370f8b78c0cb5af931871fc250df46597909a61aef5eb3"
     },
     {
       "path": "../files/相机配置.dat",
@@ -149,10 +139,17 @@
     {
       "path": "../files/field-notes.html",
       "name": "field-notes.html",
-      "size": 28094,
+      "size": 29042,
       "mime": "text/html",
-      "sha256": "44ee65c30fad44d19f2342d89401f604b5e095490e9aee83966654dd1ae584e9",
+      "sha256": "53b204fa3d64d6f92e7866233d21635d153609f1b32d91d83ad4a1ff400db15b",
       "bytesPath": "../files/field-notes.html.bin"
+    },
+    {
+      "path": "../files/云下牧场.jpg",
+      "name": "云下牧场.jpg",
+      "size": 405789,
+      "mime": "image/jpeg",
+      "sha256": "1e82d6cb2fda8c314526b5aa6b48b0532588d4c826ed0703b8375f0e3f843949"
     }
   ],
   "folders": [
@@ -162,6 +159,10 @@
         {
           "name": "LittleNote.swift",
           "path": "../files/周末旅行/LittleNote.swift"
+        },
+        {
+          "name": "云下牧场.jpg",
+          "path": "../files/周末旅行/云下牧场.jpg"
         },
         {
           "name": "出行计划.docx",
